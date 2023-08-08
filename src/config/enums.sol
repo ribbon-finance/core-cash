@@ -8,6 +8,26 @@ enum TokenType {
     CALL_SPREAD
 }
 
+enum CouponType {
+    NONE,
+    FIXED,
+    PHOENIX,
+    PHOENIX_MEMORY,
+    VANILLA
+}
+
+enum BarrierType {
+    NONE,
+    KNOCK_IN,
+    KNOCK_OUT
+}
+
+enum ExerciseType {
+    DISCRETE,
+    CONTINUOUS,
+    EUROPEAN
+}
+
 /**
  * @dev common action types on margin engines
  */
