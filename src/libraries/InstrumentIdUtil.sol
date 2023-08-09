@@ -237,4 +237,33 @@ library InstrumentIdUtil {
             exerciseType := shr(4, exerciseType) // shift >> 4 to go back
         }
     }
+
+    /**
+     * @notice derive frequency denominated in seconds
+     * @param frequency barrier observation frequency type
+     * @return frequency denominated in seconds
+     */
+    function parseBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
+        if (frequency == BarrierObservationFrequencyType.ONE_DAY) {
+            return (1 days);
+        } else if (frequency == BarrierObservationFrequencyType.ONE_WEEK) {
+            return (7 days);
+        } else if (frequency == BarrierObservationFrequencyType.TWO_WEEKS) {
+            return (14 days);
+        } else if (frequency == BarrierObservationFrequencyType.ONE_MONTH) {
+            return (30 days);
+        } else if (frequency == BarrierObservationFrequencyType.TWO_MONTHS) {
+            return (60 days);
+        } else if (frequency == BarrierObservationFrequencyType.THREE_MONTHS) {
+            return (90 days);
+        } else if (frequency == BarrierObservationFrequencyType.SIX_MONTHS) {
+            return (180 days);
+        } else if (frequency == BarrierObservationFrequencyType.NINE_MONTHS) {
+            return (270 days);
+        } else if (frequency == BarrierObservationFrequencyType.ONE_YEAR) {
+            return (365 days);
+        } else {
+            return 0;
+        }
+    }
 }
