@@ -19,8 +19,9 @@ import "../config/types.sol";
  *  | autocallId (40 bits) | coupons (256 bits)  | options (256 bits * MAX_OPTION_CONSTRUCTION)  *
  *  * -------------------- | ------------------- | --------------------------------------------- |
  *
- *  isReverse: whether it is a reverse autocallable
- *  barrierId: id of the barrier
+ *  autocallId: id of the autocall
+ *  coupons: packed coupons
+ *  options: array of options
  *
  * Autocall ID (40 bits total) =
  *
