@@ -243,7 +243,7 @@ library InstrumentIdUtil {
      * @param frequency barrier observation frequency type
      * @return frequency denominated in seconds
      */
-    function parseBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
+    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
         if (frequency == BarrierObservationFrequencyType.ONE_DAY) {
             return (1 days);
         } else if (frequency == BarrierObservationFrequencyType.ONE_WEEK) {
@@ -263,7 +263,7 @@ library InstrumentIdUtil {
         } else if (frequency == BarrierObservationFrequencyType.ONE_YEAR) {
             return (365 days);
         } else {
-            return 0;
+            return 1;
         }
     }
 }
