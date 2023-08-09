@@ -16,7 +16,7 @@ enum CouponType {
     VANILLA
 }
 
-enum ObservationFrequencyType {
+enum BarrierObservationFrequencyType {
     NONE,
     ONE_DAY,
     ONE_WEEK,
