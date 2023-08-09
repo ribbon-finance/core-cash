@@ -17,7 +17,7 @@ uint256 constant BPS = 10000;
 uint256 constant MAX_DISPUTE_PERIOD = 6 hours;
 
 ///@dev maximum amount of options in an instrument
-uint8 constant MAX_OPTION_CONSTRUCTION = 3;
+uint8 constant MAX_OPTION_CONSTRUCTION = 4;
 
 ///@dev maximum amount of coupons in an instrument
 uint8 constant MAX_COUPON_CONSTRUCTION = 4;
