@@ -16,13 +16,26 @@ enum CouponType {
     VANILLA
 }
 
-enum BarrierType {
+enum ObservationFrequencyType {
     NONE,
+    ONE_DAY,
+    ONE_WEEK,
+    TWO_WEEKS,
+    ONE_MONTH,
+    TWO_MONTHS,
+    THREE_MONTHS,
+    SIX_MONTHS,
+    NINE_MONTHS,
+    ONE_YEAR
+}
+
+enum BarrierTriggerType {
+    AUTOCALL,
     KNOCK_IN,
     KNOCK_OUT
 }
 
-enum ExerciseType {
+enum BarrierExerciseType {
     DISCRETE,
     CONTINUOUS,
     EUROPEAN

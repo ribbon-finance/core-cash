@@ -6,58 +6,14 @@ import "./enums.sol";
 /**
  * @dev struct representing an instrument which
  *             is a construction of options and coupons
- * @param maturity maturity of the instrument
+ * @param autocallId representing the autocall feature if included
+ * @param coupons packed uint of all the coupons (64 bits each) in the instrument (4 max)
  * @param options array of all the options in the instrument
- * @param coupons array of all the coupons in the instrument
- * @param autocall struct representing the autocall feature if included
  */
 struct Instrument {
-    uint40 maturity;
-    Option[] options;
-    Coupon[] coupons;
-    Autocall autocall;
-}
-
-/**
- * @dev struct representing an option with a barrier
- * @param baseTokenId id of the base token defined in TokenIdUtil.sol
- * @param leverageFactor leverage factor (ONLY PUTS)
- * @param barrierPCT percentage of the barrier relative to initial spot price
- * @param barrierId id of the barrier
- */
-struct Option {
-    uint256 baseTokenId;
-    uint8 leverageFactor;
-    uint16 barrierPCT;
-    uint40 barrierId;
-}
-
-/**
- * @dev struct representing a coupon
- * @param couponPCT percentage coupon of the notional
- * @param numInstallements number of coupon installments (ONLY AUTOCALL COUPONS)
- * @param couponType struct representing coupon type (!NONE ONLY AUTOCALL COUPONS)
- * @param barrierPCT percentage of the barrier relative to initial spot price
- * @param barrierId id of the barrier
- */
-struct Coupon {
-    uint8 couponPCT;
-    uint8 numInstallements;
-    CouponType couponType;
-    uint16 barrierPCT;
-    uint24 barrierId;
-}
-
-/**
- * @dev struct representing an autocall feature
- * @param isReverse whether it is a reverse autocallable
- * @param barrierPCT percentage of the barrier relative to initial spot price
- * @param barrierId id of the barrier
- */
-struct Autocall {
-    bool isReverse;
-    uint16 barrierPCT;
-    uint24 barrierId;
+    uint40 autocallId;
+    uint256 coupons;
+    uint256[] options;
 }
 
 /**

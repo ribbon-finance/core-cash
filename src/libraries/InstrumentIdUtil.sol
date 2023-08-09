@@ -9,126 +9,231 @@ import "../config/constants.sol";
 import "../config/types.sol";
 
 /**
+ *
+ *
  * Instrument ID = KECCAK256(struct Instrument)
+ *
+ * Instrument (296 bits + 256 bits * MAX_OPTION_CONSTRUCTION) =
+ *
+ *  * -------------------- | ------------------- | --------------------------------------------- |
+ *  | autocallId (40 bits) | coupons (256 bits)  | options (256 bits * MAX_OPTION_CONSTRUCTION)  *
+ *  * -------------------- | ------------------- | --------------------------------------------- |
+ *
+ *  isReverse: whether it is a reverse autocallable
+ *  barrierId: id of the barrier
+ *
+ * Autocall ID (40 bits total) =
+ *
+ *  * ------------------- | ------------------- |
+ *  | isReverse (8 bits)  | barrierId (32 bits) *
+ *  * ------------------- | ------------------- |
+ *
+ *  isReverse: whether it is a reverse autocallable
+ *  barrierId: id of the barrier
+ *
+ * Coupons (256 bits total) =
+ *
+ *  * ------------------- | ------------------- | ------------------- | ------------------- |
+ *  | coupon (64 bits)    | coupon (64 bits)    | coupon (64 bits)    | coupon (64 bits)    *
+ *  * ------------------- | ------------------- | ------------------- | ------------------- |
+ *
+ * Coupon ID (64 bits total) =
+ *
+ *  * ------------------- | -------------------------- | -------------------- | -------------------- |
+ *  | couponPCT (16 bits) | numInstallements (12 bits) | couponType (4 bits)  | barrierId (32 bits)  *
+ *  * ------------------- | -------------------------- | -------------------- | -------------------- |
+ *
+ *  couponPCT: coupon percentage of notional
+ *  numInstallements: number of coupon installments (ONLY AUTOCALL COUPONS)
+ *  couponType: coupon type (!NONE ONLY AUTOCALL COUPONS)
+ *  barrierId: id of the barrier
+ *
+ * Barrier ID (32 bits total) =
+ *
+ *  * -------------------- | ----------------------------- | ---------------------------- | ---------------------------- |
+ *  | barrierPCT (16 bits) | observationFrequency (8 bits) | barrierTriggerType (4 bits)  | barrierExerciseType (4 bits) *
+ *  * -------------------- | ----------------------------- | ---------------------------- | ---------------------------- |
+ *
+ *  barrierPCT: percentage of the barrier relative to initial spot price
+ *  observationFrequency: frequency of barrier observations (ObservationFrequencyType)
+ *  barrierTriggerType: trigger type of the barrier (BarrierTriggerType)
+ *  barrierExerciseType: exercise type of the barrier (BarrierExerciseType)
+ *
  */
 
 library InstrumentIdUtil {
     /**
      * @notice calculate ERC1155 token id for given instrument parameters.
      * @param instrument Instrument struct
+     * @return instrumentId id of the instrument
      */
-    function getInstrumentId(Instrument memory instrument) internal pure returns (uint256 tokenId) {
-        bytes32 start = "";
+    function getInstrumentId(Instrument calldata instrument) internal pure returns (uint256 instrumentId) {
+        bytes32 start = keccak256(abi.encode(instrument.autocallId, instrument.coupons));
 
         for (uint256 i = 0; i < MAX_OPTION_CONSTRUCTION; i++) {
-            Option memory option = instrument.options[i];
+            uint256 optionId = instrument.options[i];
 
-            if (option.baseTokenId == 0) {
+            if (optionId == 0) {
                 break;
             }
 
-            start = keccak256(abi.encode(start, option.baseTokenId, option.leverageFactor, option.barrierPCT, option.barrierId));
+            start = keccak256(abi.encode(start, optionId));
         }
 
-        for (uint256 i = 0; i < MAX_COUPON_CONSTRUCTION; i++) {
-            Coupon memory coupon = instrument.coupons[i];
-
-            if (coupon.couponPCT == 0) {
-                break;
-            }
-
-            start = keccak256(
-                abi.encode(
-                    start, coupon.couponPCT, coupon.numInstallements, coupon.couponType, coupon.barrierPCT, coupon.barrierId
-                )
-            );
-        }
-
-        Autocall memory autocall = instrument.autocall;
-        tokenId = uint256(keccak256(abi.encode(start, autocall.isReverse, autocall.barrierPCT, autocall.barrierId)));
+        instrumentId = uint256(start);
     }
 
-    // Barrier Id first 32 bits are observationFrequency, second 4 are barrier type, third 4 are exercise type
-    // function parseBarrierId(uint24 barrierId){};
+    /**
+     * @notice calculate autocall id. See table above for autocallId
+     * @param isReverse whether it is a reverse autocallable
+     * @param barrierId id of the barrier
+     * @return autocallId autocall id
+     */
+    function getAutocallId(bool isReverse, uint32 barrierId) internal pure returns (uint40 autocallId) {
+        unchecked {
+            autocallId = (uint40((isReverse ? 1 : 0)) << 32) + uint40(barrierId);
+        }
+    }
 
     /**
-     * @notice derive option, product, expiry and strike price from ERC1155 token id
-     * @dev    See table above for tokenId composition
-     * @param tokenId token id
-     * @return tokenType TokenType enum
-     * @return productId 32 bits product id
-     * @return expiry timestamp of option expiry
-     * @return longStrike strike price of the long option, with 6 decimals
-     * @return reserved strike price of the short (upper bond for call and lower bond for put) if this is a spread. 6 decimals
+     * @notice derive isReverse, barrierId from autocallId
+     * @param autocallId autocall id
+     * @return isReverse whether it is a reverse autocallable
+     * @return barrierId id of the barrier
      */
-    function parseTokenId(uint256 tokenId)
+    function parseAutocallId(uint40 autocallId) internal pure returns (bool isReverse, uint32 barrierId) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            isReverse := shr(32, autocallId)
+            barrierId := autocallId
+        }
+    }
+
+    /**
+     * @notice calculate coupons packing. See table above for coupons
+     * @param couponArr array of coupons
+     * @return coupons coupons
+     */
+    function getCoupons(uint64[] calldata couponArr) internal pure returns (uint256 coupons) {
+        for (uint256 i = 0; i < couponArr.length; i++) {
+            coupons = coupons + (uint256(couponArr[i]) << (64 * (MAX_COUPON_CONSTRUCTION - i - 1)));
+        }
+    }
+
+    /**
+     * @notice calculate coupon id. See table above for couponId
+     * @param couponPCT coupon percentage of notional
+     * @param numInstallements number of installments
+     * @param couponType coupon type
+     * @param barrierId barrier id
+     * @return couponId coupon id
+     */
+    function getCouponId(uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
         internal
         pure
-        returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 reserved)
+        returns (uint64 couponId)
+    {
+        unchecked {
+            couponId =
+                (uint64(couponPCT) << 48) + (uint64(numInstallements) << 32) + (uint64(couponType) << 28) + uint64(barrierId);
+        }
+    }
+
+    /**
+     * @notice derive couponPCT, numInstallements, couponType, barrierId from coupon packing
+     * @param coupons coupons
+     * @param index of the coupon (max 4)
+     * @return couponPCT coupon percentage of notional
+     * @return numInstallements number of installments
+     * @return couponType coupon type
+     * @return barrierId barrier id
+     */
+    function parseCouponId(uint256 coupons, uint256 index)
+        internal
+        pure
+        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+    {
+        uint64 couponId;
+
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            couponId := shr(mul(sub(MAX_COUPON_CONSTRUCTION, index), 64), coupons)
+        }
+
+        (couponPCT, numInstallements, couponType, barrierId) = parseCouponId(couponId);
+    }
+
+    /**
+     * @notice derive couponPCT, numInstallements, couponType, barrierId from couponId
+     * @param couponId coupon id
+     * @return couponPCT coupon percentage of notional
+     * @return numInstallements number of installments
+     * @return couponType coupon type
+     * @return barrierId barrier id
+     */
+    function parseCouponId(uint64 couponId)
+        internal
+        pure
+        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            tokenType := shr(232, tokenId)
-            productId := shr(192, tokenId)
-            expiry := shr(128, tokenId)
-            longStrike := shr(64, tokenId)
-            reserved := tokenId
+            couponPCT := shr(48, couponId)
+            numInstallements := shr(32, couponId)
+            numInstallements := shr(4, numInstallements) // shift >> 4 to wipe out couponType
+            couponType := shr(28, couponId)
+            couponType := shr(4, couponType) // shift >> 4 to wipe out barrierId first 4 bytes
+            barrierId := couponId
         }
     }
 
     /**
-     * @notice parse collateral id from tokenId
-     * @dev more efficient than parsing tokenId and than parse productId
-     * @param tokenId token id
-     * @return collateralId
+     * @notice calculate barrier id. See table above for barrier Id
+     * @param barrierPCT percentage of the barrier relative to initial spot price
+     * @param observationFrequency frequency of barrier observations
+     * @param barrierTriggerType trigger type of the barrier
+     * @param barrierExerciseType exercise type of the barrier
+     * @return barrierId barrier id
      */
-    function parseCollateralId(uint256 tokenId) internal pure returns (uint8 collateralId) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            // collateralId is the last bits of productId
-            collateralId := shr(192, tokenId)
+    function getBarrierId(
+        uint16 barrierPCT,
+        ObservationFrequencyType observationFrequency,
+        BarrierTriggerType barrierTriggerType,
+        BarrierExerciseType barrierExerciseType
+    ) internal pure returns (uint32 barrierId) {
+        unchecked {
+            barrierId = (uint32(barrierPCT) << 16) + (uint32(observationFrequency) << 8) + (uint32(barrierTriggerType) << 4)
+                + uint32(barrierExerciseType);
         }
     }
 
     /**
-     * @notice parse engine id from tokenId
-     * @dev more efficient than parsing tokenId and than parse productId
-     * @param tokenId token id
-     * @return engineId
+     * @notice derive barrierPCT, observationFrequency, barrierType, exerciseType from barrierId
+     * @param barrierId barrier id
+     * @return barrierPCT percentage of the barrier relative to initial spot price
+     * @return observationFrequency frequency of barrier observations
+     * @return barrierTriggerType trigger type of the barrier
+     * @return barrierExerciseType exercise type of the barrier
      */
-    function parseEngineId(uint256 tokenId) internal pure returns (uint8 engineId) {
+    function parseBarrierId(uint32 barrierId)
+        internal
+        pure
+        returns (
+            uint16 barrierPCT,
+            ObservationFrequencyType observationFrequency,
+            BarrierTriggerType barrierTriggerType,
+            BarrierExerciseType barrierExerciseType
+        )
+    {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            // collateralId is the last bits of productId
-            engineId := shr(216, tokenId) // 192 to get product id, another 24 to get engineId
+            barrierPCT := shr(16, barrierId)
+            observationFrequency := shr(8, barrierId)
+            barrierTriggerType := barrierId
+            barrierTriggerType := shr(4, barrierTriggerType) // shift >> 4 to wipe out barrierExerciseType
+            barrierExerciseType := barrierId
+            barrierExerciseType := shl(4, barrierExerciseType) // shift << 4 to wipe out barrierTriggerType
+            barrierExerciseType := shr(4, barrierExerciseType) // shift >> 4 to go back
         }
-    }
-
-    /**
-     * @notice derive option type from ERC1155 token id
-     * @param tokenId token id
-     * @return tokenType TokenType enum
-     */
-    function parseTokenType(uint256 tokenId) internal pure returns (TokenType tokenType) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            tokenType := shr(232, tokenId)
-        }
-    }
-
-    /**
-     * @notice derive if option is expired from ERC1155 token id
-     * @param tokenId token id
-     * @return expired bool
-     */
-    function isExpired(uint256 tokenId) internal view returns (bool expired) {
-        uint64 expiry;
-
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            expiry := shr(128, tokenId)
-        }
-
-        expired = block.timestamp >= expiry;
     }
 }

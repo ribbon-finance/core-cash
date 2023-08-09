@@ -21,7 +21,7 @@ library TokenIdUtil {
      * @param productId if of the product
      * @param expiry timestamp of option expiry
      * @param longStrike strike price of the long option, with 6 decimals
-     * @param reserved strike price of the short (upper bond for call and lower bond for put) if this is a spread. 6 decimals
+     * @param reserved either leverageFactor (ONLY PUTS) (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
      * @return tokenId token id
      */
     function getTokenId(TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 reserved)
@@ -43,7 +43,7 @@ library TokenIdUtil {
      * @return productId 32 bits product id
      * @return expiry timestamp of option expiry
      * @return longStrike strike price of the long option, with 6 decimals
-     * @return reserved strike price of the short (upper bond for call and lower bond for put) if this is a spread. 6 decimals
+     * @return reserved either leverageFactor (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
      */
     function parseTokenId(uint256 tokenId)
         internal
@@ -118,22 +118,31 @@ library TokenIdUtil {
 
     /**
      * @notice convert an spread tokenId back to put or call.
-     *                  * ------------------- | ------------------- | ---------------- | -------------------- | --------------------- *
-     * @dev   oldId =   | spread type (24 b)  | productId (40 bits) | expiry (64 bits) | longStrike (64 bits) | shortStrike (64 bits) |
-     *                  * ------------------- | ------------------- | ---------------- | -------------------- | --------------------- *
-     *                  * ------------------- | ------------------- | ---------------- | -------------------- | --------------------- *
-     * @dev   newId =   | call or put type    | productId (40 bits) | expiry (64 bits) | longStrike (64 bits) | 0           (64 bits) |
-     *                  * ------------------- | ------------------- | ---------------- | -------------------- | --------------------- *
+     *                  * ------------------- | ------------------- | ---------------- | -------------------- | ----------------------------------------------*
+     * @dev   oldId =   | spread type (24 b)  | productId (40 bits) | expiry (64 bits) | longStrike (64 bits) | shortStrike (64 bits)                         |
+     *                  * ------------------- | ------------------- | ---------------- | -------------------- | ----------------------------------------------*
+     *                  * ------------------- | ------------------- | ---------------- | -------------------- | ----------------------------------------------*
+     * @dev   newId =   | call or put type    | productId (40 bits) | expiry (64 bits) | longStrike (64 bits) | leverageFactor (32 bits) + barrierId (32 bits)|
+     *                  * ------------------- | ------------------- | ---------------- | -------------------- | ----------------------------------------------*
      * @dev   this function will: override tokenType, remove shortStrike.
      * @param _tokenId token id to change
+     * @param _leverageFactor leverageFactor to add
      */
-    function convertToVanillaId(uint256 _tokenId) internal pure returns (uint256 newId) {
+    function convertToVanillaId(uint256 _tokenId, uint256 _leverageFactor, uint256 _barrierID)
+        internal
+        pure
+        returns (uint256 newId)
+    {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             newId := shr(64, _tokenId) // step 1: >> 64 to wipe out shortStrike
             newId := shl(64, newId) // step 2: << 64 go back
 
-            newId := sub(newId, shl(232, 1)) // step 3: new tokenType = spread type - 1
+            newId := add(newId, shl(32, _leverageFactor)) // step 3: leverageFactor = _leverageFactor
+
+            if sgt(_barrierID, 0) { newId := add(newId, _barrierID) } // step 4: barrierId = __barrierID
+
+            newId := sub(newId, shl(232, 1)) // step 5: new tokenType = spread type - 1
         }
     }
 

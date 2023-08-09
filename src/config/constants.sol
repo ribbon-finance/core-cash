@@ -20,4 +20,4 @@ uint256 constant MAX_DISPUTE_PERIOD = 6 hours;
 uint8 constant MAX_OPTION_CONSTRUCTION = 3;
 
 ///@dev maximum amount of coupons in an instrument
-uint8 constant MAX_COUPON_CONSTRUCTION = 3;
+uint8 constant MAX_COUPON_CONSTRUCTION = 4;
