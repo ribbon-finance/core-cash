@@ -79,7 +79,7 @@ contract TokenIdUtilTest is Test {
     function testReserveFormatAndParseAreMirrored(uint32 leveragePCT, uint32 barrierId) public {
         uint64 reserve = TokenIdUtil.getReserve(leveragePCT, barrierId);
         (uint32 _leveragePCT, uint32 _barrierId) = TokenIdUtil.parseReserve(reserve);
-
+        
         assertEq(leveragePCT, _leveragePCT);
         assertEq(barrierId, _barrierId);
     }
