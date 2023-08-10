@@ -74,4 +74,24 @@ contract InstrumentIdUtilTest is Test {
         assertEq(uint8(couponType), uint8(_couponType));
         assertEq(uint32(barrierId), _barrierId);
     }
+
+    function testCouponsGetAndParseAreMirrored(uint64[] calldata coupons) public {
+        uint256 len = coupons.length;
+        vm.assume(len > 0);
+
+        uint256 _coupons = InstrumentIdUtil.getCoupons(coupons);
+
+        for (uint256 i = 0; i < len; i++) {
+            (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
+                InstrumentIdUtil.parseCouponId(_coupons, i);
+
+            (uint16 _couponPCT, uint16 _numInstallements, CouponType _couponType, uint32 _barrierId) =
+                InstrumentIdUtil.parseCouponId(coupons[i]);
+
+            assertEq(couponPCT, _couponPCT);
+            assertEq(numInstallements, _numInstallements);
+            assertEq(uint8(couponType), uint8(_couponType));
+            assertEq(barrierId, _barrierId);
+        }
+    }
 }
