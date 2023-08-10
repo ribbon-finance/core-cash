@@ -8,6 +8,39 @@ enum TokenType {
     CALL_SPREAD
 }
 
+enum CouponType {
+    NONE,
+    FIXED,
+    PHOENIX,
+    PHOENIX_MEMORY,
+    VANILLA
+}
+
+enum BarrierObservationFrequencyType {
+    NONE,
+    ONE_DAY,
+    ONE_WEEK,
+    TWO_WEEKS,
+    ONE_MONTH,
+    TWO_MONTHS,
+    THREE_MONTHS,
+    SIX_MONTHS,
+    NINE_MONTHS,
+    ONE_YEAR
+}
+
+enum BarrierTriggerType {
+    AUTOCALL,
+    KNOCK_IN,
+    KNOCK_OUT
+}
+
+enum BarrierExerciseType {
+    DISCRETE,
+    CONTINUOUS,
+    EUROPEAN
+}
+
 /**
  * @dev common action types on margin engines
  */

@@ -4,6 +4,19 @@ pragma solidity ^0.8.0;
 import "./enums.sol";
 
 /**
+ * @dev struct representing an instrument which
+ *             is a construction of options and coupons
+ * @param autocallId representing the autocall feature if included
+ * @param coupons packed uint of all the coupons (64 bits each) in the instrument (4 max)
+ * @param options array of all the options in the instrument
+ */
+struct Instrument {
+    uint40 autocallId;
+    uint256 coupons;
+    uint256[] options;
+}
+
+/**
  * @dev struct representing the current balance for a given collateral
  * @param collateralId grappa asset id
  * @param amount amount the asset
