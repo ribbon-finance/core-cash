@@ -421,8 +421,8 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
         (TokenType optionType,, uint64 expiry, uint64 longStrike, uint64 reserved) = _tokenId.parseTokenId();
         (uint32 leveragePCT,) = TokenIdUtil.parseReserve(reserved);
 
-        if (optionType == TokenType.PUT && leveragePCT > MAX_PUT_LEVERAGE) revert GP_BadLeverageFactor();
-        if (optionType == TokenType.CALL && leveragePCT > 0) revert GP_BadLeverageFactor();
+        if (optionType == TokenType.PUT && leveragePCT > MAX_PUT_LEVERAGE) revert GP_BadLeveragePCT();
+        if (optionType == TokenType.CALL && leveragePCT > 0) revert GP_BadLeveragePCT();
 
         // check that you cannot mint a "credit spread" token
         if (optionType == TokenType.CALL_SPREAD && (reserved < longStrike)) revert GP_BadStrikes();
