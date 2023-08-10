@@ -49,17 +49,6 @@ import "../config/types.sol";
  *  couponType: coupon type (!NONE ONLY AUTOCALL COUPONS)
  *  barrierId: id of the barrier
  *
- * Barrier ID (32 bits total) =
- *
- *  * -------------------- | ------------------------------ | --------------------- | --------------------- |
- *  | barrierPCT (16 bits) | observationFrequency (8 bits)  | triggerType (4 bits)  | exerciseType (4 bits) *
- *  * -------------------- | ------------------------------ | --------------------- | --------------------- |
- *
- *  barrierPCT: percentage of the barrier relative to initial spot price
- *  observationFrequency: frequency of barrier observations (ObservationFrequencyType)
- *  triggerType: trigger type of the barrier (BarrierTriggerType)
- *  exerciseType: exercise type of the barrier (BarrierExerciseType)
- *
  */
 
 library InstrumentIdUtil {
@@ -185,85 +174,6 @@ library InstrumentIdUtil {
             couponType := shr(28, couponId)
             couponType := shr(4, couponType) // shift >> 4 to wipe out barrierId first 4 bytes
             barrierId := couponId
-        }
-    }
-
-    /**
-     * @notice calculate barrier id. See table above for barrier Id
-     * @param barrierPCT percentage of the barrier relative to initial spot price
-     * @param observationFrequency frequency of barrier observations
-     * @param triggerType trigger type of the barrier
-     * @param exerciseType exercise type of the barrier
-     * @return barrierId barrier id
-     */
-    function getBarrierId(
-        uint16 barrierPCT,
-        BarrierObservationFrequencyType observationFrequency,
-        BarrierTriggerType triggerType,
-        BarrierExerciseType exerciseType
-    ) internal pure returns (uint32 barrierId) {
-        unchecked {
-            barrierId = (uint32(barrierPCT) << 16) + (uint32(observationFrequency) << 8) + (uint32(triggerType) << 4)
-                + uint32(exerciseType);
-        }
-    }
-
-    /**
-     * @notice derive barrierPCT, observationFrequency, barrierType, exerciseType from barrierId
-     * @param barrierId barrier id
-     * @return barrierPCT percentage of the barrier relative to initial spot price
-     * @return observationFrequency frequency of barrier observations
-     * @return triggerType trigger type of the barrier
-     * @return exerciseType exercise type of the barrier
-     */
-    function parseBarrierId(uint32 barrierId)
-        internal
-        pure
-        returns (
-            uint16 barrierPCT,
-            BarrierObservationFrequencyType observationFrequency,
-            BarrierTriggerType triggerType,
-            BarrierExerciseType exerciseType
-        )
-    {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            barrierPCT := shr(16, barrierId)
-            observationFrequency := shr(8, barrierId)
-            triggerType := barrierId
-            triggerType := shr(4, triggerType) // shift >> 4 to wipe out exerciseType
-            exerciseType := barrierId
-            exerciseType := shl(4, exerciseType) // shift << 4 to wipe out triggerType
-            exerciseType := shr(4, exerciseType) // shift >> 4 to go back
-        }
-    }
-
-    /**
-     * @notice derive frequency denominated in seconds
-     * @param frequency barrier observation frequency type
-     * @return frequency denominated in seconds
-     */
-    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
-        if (frequency == BarrierObservationFrequencyType.ONE_DAY) {
-            return (1 days);
-        } else if (frequency == BarrierObservationFrequencyType.ONE_WEEK) {
-            return (7 days);
-        } else if (frequency == BarrierObservationFrequencyType.TWO_WEEKS) {
-            return (14 days);
-        } else if (frequency == BarrierObservationFrequencyType.ONE_MONTH) {
-            return (30 days);
-        } else if (frequency == BarrierObservationFrequencyType.TWO_MONTHS) {
-            return (60 days);
-        } else if (frequency == BarrierObservationFrequencyType.THREE_MONTHS) {
-            return (90 days);
-        } else if (frequency == BarrierObservationFrequencyType.SIX_MONTHS) {
-            return (180 days);
-        } else if (frequency == BarrierObservationFrequencyType.NINE_MONTHS) {
-            return (270 days);
-        } else if (frequency == BarrierObservationFrequencyType.ONE_YEAR) {
-            return (365 days);
-        } else {
-            return 1;
         }
     }
 }
