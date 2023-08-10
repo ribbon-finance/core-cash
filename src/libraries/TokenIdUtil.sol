@@ -181,8 +181,8 @@ library TokenIdUtil {
         assembly {
             barrierPCT := shr(16, barrierId)
             observationFrequency := and(shr(8, barrierId), 0xFF)
-            triggerType := and(shr(4, barrierId), 0xF) // shift >> 4 to wipe out exerciseType
-            exerciseType := and(barrierId, 0xF) // shift << 4 to wipe out triggerType
+            triggerType := and(shr(4, barrierId), 0xF)
+            exerciseType := and(barrierId, 0xF)
         }
     }
 
