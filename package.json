@@ -14,5 +14,8 @@
     "@commitlint/config-conventional": "^17.0.0",
     "eth-create2-calculator": "^1.1.5",
     "husky": "^8.0.1"
+  },
+  "dependencies": {
+    "slither.io": "^0.0.0"
   }
 }
