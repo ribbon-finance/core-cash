@@ -6,12 +6,13 @@ import {InstrumentIdUtil} from "../../src/libraries/InstrumentIdUtil.sol";
 
 import "../../src/config/types.sol";
 import "../../src/config/enums.sol";
+import "../../src/config/constants.sol";
 
 contract InstrumentIdUtilTest is Test {
     mapping(uint256 => bool) public instrumentRegistered;
 
     function testInstrumentIdHigherThan0(Instrument calldata instrument) public {
-        vm.assume(instrument.options[0] > 0);
+        vm.assume(instrument.options.length > 0);
 
         uint256 id = InstrumentIdUtil.getInstrumentId(instrument);
 
@@ -19,7 +20,7 @@ contract InstrumentIdUtilTest is Test {
     }
 
     function testInstrumentIdUnique(Instrument calldata instrument) public {
-        vm.assume(instrument.options[0] > 0);
+        vm.assume(instrument.options.length > 0);
 
         uint256 id = InstrumentIdUtil.getInstrumentId(instrument);
 
@@ -43,13 +44,13 @@ contract InstrumentIdUtilTest is Test {
         assertEq(uint32(barrierId), _barrierId);
     }
 
-    function testCouponIdFormatAndParseAreMirrored(
-        uint16 couponPCT,
-        uint16 numInstallements,
-        CouponType couponType,
-        uint32 barrierId
-    ) public {
-        uint64 id = InstrumentIdUtil.getCouponId(couponPCT, numInstallements, couponType, barrierId);
+    function testCouponIdFormatAndParseAreMirrored(uint16 couponPCT, uint16 numInstallements, uint8 couponType, uint32 barrierId)
+        public
+    {
+        vm.assume(numInstallements < 4096);
+        vm.assume(couponType <= uint8(type(CouponType).max));
+
+        uint64 id = InstrumentIdUtil.getCouponId(couponPCT, numInstallements, CouponType(couponType), barrierId);
         (uint16 _couponPCT, uint16 _numInstallements, CouponType _couponType, uint32 _barrierId) =
             InstrumentIdUtil.parseCouponId(id);
 
@@ -59,13 +60,14 @@ contract InstrumentIdUtilTest is Test {
         assertEq(barrierId, _barrierId);
     }
 
-    function testCouponIdGetAndParseAreMirrored(
-        uint256 couponPCT,
-        uint256 numInstallements,
-        CouponType couponType,
-        uint256 barrierId
-    ) public {
-        uint64 id = InstrumentIdUtil.getCouponId(uint16(couponPCT), uint16(numInstallements), couponType, uint32(barrierId));
+    function testCouponIdGetAndParseAreMirrored(uint256 couponPCT, uint256 numInstallements, uint8 couponType, uint256 barrierId)
+        public
+    {
+        vm.assume(numInstallements < 4096);
+        vm.assume(couponType <= uint8(type(CouponType).max));
+
+        uint64 id =
+            InstrumentIdUtil.getCouponId(uint16(couponPCT), uint16(numInstallements), CouponType(couponType), uint32(barrierId));
         (uint16 _couponPCT, uint16 _numInstallements, CouponType _couponType, uint32 _barrierId) =
             InstrumentIdUtil.parseCouponId(id);
 
@@ -77,7 +79,13 @@ contract InstrumentIdUtilTest is Test {
 
     function testCouponsGetAndParseAreMirrored(uint64[] calldata coupons) public {
         uint256 len = coupons.length;
-        vm.assume(len > 0);
+
+        vm.assume(len <= MAX_COUPON_CONSTRUCTION);
+
+        for (uint256 i = 0; i < len; i++) {
+            vm.assume(((coupons[i] >> 36) & ((1 << 13) - 1)) < 4096);
+            vm.assume(((coupons[i] >> 32) & ((1 << 5) - 1)) <= uint8(type(CouponType).max));
+        }
 
         uint256 _coupons = InstrumentIdUtil.getCoupons(coupons);
 

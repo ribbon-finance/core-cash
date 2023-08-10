@@ -180,12 +180,9 @@ library TokenIdUtil {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             barrierPCT := shr(16, barrierId)
-            observationFrequency := shr(8, barrierId)
-            triggerType := barrierId
-            triggerType := shr(4, triggerType) // shift >> 4 to wipe out exerciseType
-            exerciseType := barrierId
-            exerciseType := shl(4, exerciseType) // shift << 4 to wipe out triggerType
-            exerciseType := shr(4, exerciseType) // shift >> 4 to go back
+            observationFrequency := and(shr(8, barrierId), 0xFF)
+            triggerType := and(shr(4, barrierId), 0xF) // shift >> 4 to wipe out exerciseType
+            exerciseType := and(barrierId, 0xF) // shift << 4 to wipe out triggerType
         }
     }
 

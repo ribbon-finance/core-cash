@@ -18,17 +18,20 @@ contract TokenIdUtilTest is Test {
         assertGt(id, 0);
     }
 
-    function testBarrierIdHigherThan0(
-        uint16 barrierPCT,
-        BarrierObservationFrequencyType observationFrequency,
-        BarrierTriggerType triggerType,
-        BarrierExerciseType exerciseType
-    ) public {
-        vm.assume(observationFrequency <= type(BarrierObservationFrequencyType).max);
-        vm.assume(triggerType <= type(BarrierTriggerType).max);
-        vm.assume(exerciseType <= type(BarrierExerciseType).max);
+    function testBarrierIdHigherThan0(uint16 barrierPCT, uint8 observationFrequency, uint8 triggerType, uint8 exerciseType)
+        public
+    {
+        vm.assume(barrierPCT > 0 || observationFrequency > 0 || triggerType > 0 || exerciseType > 0);
+        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
+        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
+        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
 
-        uint256 id = TokenIdUtil.getBarrierId(barrierPCT, observationFrequency, triggerType, exerciseType);
+        uint256 id = TokenIdUtil.getBarrierId(
+            barrierPCT,
+            BarrierObservationFrequencyType(observationFrequency),
+            BarrierTriggerType(triggerType),
+            BarrierExerciseType(exerciseType)
+        );
 
         assertGt(id, 0);
     }
@@ -79,7 +82,7 @@ contract TokenIdUtilTest is Test {
     function testReserveFormatAndParseAreMirrored(uint32 leveragePCT, uint32 barrierId) public {
         uint64 reserve = TokenIdUtil.getReserve(leveragePCT, barrierId);
         (uint32 _leveragePCT, uint32 _barrierId) = TokenIdUtil.parseReserve(reserve);
-        
+
         assertEq(leveragePCT, _leveragePCT);
         assertEq(barrierId, _barrierId);
     }
@@ -94,16 +97,21 @@ contract TokenIdUtilTest is Test {
 
     function testBarrierIdFormatAndParseAreMirrored(
         uint16 barrierPCT,
-        BarrierObservationFrequencyType observationFrequency,
-        BarrierTriggerType triggerType,
-        BarrierExerciseType exerciseType
+        uint8 observationFrequency,
+        uint8 triggerType,
+        uint8 exerciseType
     ) public {
-        vm.assume(barrierPCT > 0);
-        vm.assume(observationFrequency <= type(BarrierObservationFrequencyType).max);
-        vm.assume(triggerType <= type(BarrierTriggerType).max);
-        vm.assume(exerciseType <= type(BarrierExerciseType).max);
+        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
+        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
+        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
 
-        uint32 id = TokenIdUtil.getBarrierId(barrierPCT, observationFrequency, triggerType, exerciseType);
+        uint32 id = TokenIdUtil.getBarrierId(
+            barrierPCT,
+            BarrierObservationFrequencyType(observationFrequency),
+            BarrierTriggerType(triggerType),
+            BarrierExerciseType(exerciseType)
+        );
+
         (
             uint16 _barrierPCT,
             BarrierObservationFrequencyType _observationFrequency,
@@ -119,16 +127,20 @@ contract TokenIdUtilTest is Test {
 
     function testBarrierIdGetAndParseAreMirrored(
         uint256 barrierPCT,
-        BarrierObservationFrequencyType observationFrequency,
-        BarrierTriggerType triggerType,
-        BarrierExerciseType exerciseType
+        uint8 observationFrequency,
+        uint8 triggerType,
+        uint8 exerciseType
     ) public {
-        vm.assume(barrierPCT > 0);
-        vm.assume(observationFrequency <= type(BarrierObservationFrequencyType).max);
-        vm.assume(triggerType <= type(BarrierTriggerType).max);
-        vm.assume(exerciseType <= type(BarrierExerciseType).max);
+        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
+        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
+        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
 
-        uint32 id = TokenIdUtil.getBarrierId(uint16(barrierPCT), observationFrequency, triggerType, exerciseType);
+        uint32 id = TokenIdUtil.getBarrierId(
+            uint16(barrierPCT),
+            BarrierObservationFrequencyType(observationFrequency),
+            BarrierTriggerType(triggerType),
+            BarrierExerciseType(exerciseType)
+        );
         (
             uint16 _barrierPCT,
             BarrierObservationFrequencyType _observationFrequency,
@@ -137,8 +149,8 @@ contract TokenIdUtilTest is Test {
         ) = TokenIdUtil.parseBarrierId(id);
 
         assertEq(uint16(barrierPCT), _barrierPCT);
-        assertEq(uint8(observationFrequency), uint8(_observationFrequency));
-        assertEq(uint8(triggerType), uint8(_triggerType));
-        assertEq(uint8(exerciseType), uint8(_exerciseType));
+        assertEq(observationFrequency, uint8(_observationFrequency));
+        assertEq(triggerType, uint8(_triggerType));
+        assertEq(exerciseType, uint8(_exerciseType));
     }
 }

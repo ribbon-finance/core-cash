@@ -60,8 +60,9 @@ library InstrumentIdUtil {
     function getInstrumentId(Instrument calldata instrument) internal pure returns (uint256 instrumentId) {
         bytes32 start = keccak256(abi.encode(instrument.autocallId, instrument.coupons));
 
-        for (uint256 i = 0; i < MAX_OPTION_CONSTRUCTION; i++) {
-            uint256 optionId = instrument.options[i];
+        uint256[] memory options = instrument.options;
+        for (uint256 i = 0; i < options.length; i++) {
+            uint256 optionId = options[i];
 
             if (optionId == 0) {
                 break;
@@ -125,7 +126,7 @@ library InstrumentIdUtil {
     {
         unchecked {
             couponId =
-                (uint64(couponPCT) << 48) + (uint64(numInstallements) << 32) + (uint64(couponType) << 28) + uint64(barrierId);
+                (uint64(couponPCT) << 48) + (uint64(numInstallements) << 36) + (uint64(couponType) << 32) + uint64(barrierId);
         }
     }
 
@@ -147,7 +148,7 @@ library InstrumentIdUtil {
 
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            couponId := shr(mul(sub(MAX_COUPON_CONSTRUCTION, index), 64), coupons)
+            couponId := shr(mul(sub(MAX_COUPON_CONSTRUCTION, add(index, 1)), 64), coupons)
         }
 
         (couponPCT, numInstallements, couponType, barrierId) = parseCouponId(couponId);
@@ -169,10 +170,8 @@ library InstrumentIdUtil {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             couponPCT := shr(48, couponId)
-            numInstallements := shr(32, couponId)
-            numInstallements := shr(4, numInstallements) // shift >> 4 to wipe out couponType
-            couponType := shr(28, couponId)
-            couponType := shr(4, couponType) // shift >> 4 to wipe out barrierId first 4 bytes
+            numInstallements := and(shr(36, couponId), 0xFFF)
+            couponType := and(shr(32, couponId), 0xF)
             barrierId := couponId
         }
     }
