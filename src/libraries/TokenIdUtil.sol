@@ -34,7 +34,7 @@ library TokenIdUtil {
      * @param productId if of the product
      * @param expiry timestamp of option expiry
      * @param longStrike strike price of the long option, with 6 decimals
-     * @param reserved either leverageFactor (ONLY PUTS) (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
+     * @param reserved either leveragePCT (ONLY PUTS) (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
      * @return tokenId token id
      */
     function getTokenId(TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 reserved)
@@ -56,7 +56,7 @@ library TokenIdUtil {
      * @return productId 32 bits product id
      * @return expiry timestamp of option expiry
      * @return longStrike strike price of the long option, with 6 decimals
-     * @return reserved either leverageFactor (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
+     * @return reserved either leveragePCT (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
      */
     function parseTokenId(uint256 tokenId)
         internal
@@ -110,6 +110,32 @@ library TokenIdUtil {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             tokenType := shr(232, tokenId)
+        }
+    }
+
+    /**
+     * @notice derive reserve for non-spreads from reserve
+     * @param reserve reserve
+     * @return leveragePCT leveragef actor
+     * @return barrierId barrier id
+     */
+    function parseReserve(uint64 reserve) internal pure returns (uint32 leveragePCT, uint32 barrierId) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            leveragePCT := shr(32, reserve)
+            barrierId := reserve
+        }
+    }
+
+    /**
+     * @notice calculate reserve
+     * @param leveragePCT leverage factor
+     * @param barrierId barrier id
+     * @return reserve reserve
+     */
+    function getReserve(uint32 leveragePCT, uint32 barrierId) internal pure returns (uint64 reserve) {
+        unchecked {
+            reserve = (uint32(leveragePCT) << 16) + uint32(barrierId);
         }
     }
 
@@ -214,13 +240,13 @@ library TokenIdUtil {
      * @dev   oldId =   | spread type (24 b)  | productId (40 bits) | expiry (64 bits) | longStrike (64 bits) | shortStrike (64 bits)                         |
      *                  * ------------------- | ------------------- | ---------------- | -------------------- | ----------------------------------------------*
      *                  * ------------------- | ------------------- | ---------------- | -------------------- | ----------------------------------------------*
-     * @dev   newId =   | call or put type    | productId (40 bits) | expiry (64 bits) | longStrike (64 bits) | leverageFactor (32 bits) + barrierId (32 bits)|
+     * @dev   newId =   | call or put type    | productId (40 bits) | expiry (64 bits) | longStrike (64 bits) | leveragePCT (32 bits) + barrierId (32 bits)|
      *                  * ------------------- | ------------------- | ---------------- | -------------------- | ----------------------------------------------*
      * @dev   this function will: override tokenType, remove shortStrike.
      * @param _tokenId token id to change
-     * @param _leverageFactor leverageFactor to add
+     * @param _leveragePCT leveragePCT to add
      */
-    function convertToVanillaId(uint256 _tokenId, uint256 _leverageFactor, uint256 _barrierID)
+    function convertToVanillaId(uint256 _tokenId, uint256 _leveragePCT, uint256 _barrierID)
         internal
         pure
         returns (uint256 newId)
@@ -230,7 +256,7 @@ library TokenIdUtil {
             newId := shr(64, _tokenId) // step 1: >> 64 to wipe out shortStrike
             newId := shl(64, newId) // step 2: << 64 go back
 
-            newId := add(newId, shl(32, _leverageFactor)) // step 3: leverageFactor = _leverageFactor
+            newId := add(newId, shl(32, _leveragePCT)) // step 3: leveragePCT = _leveragePCT
 
             if sgt(_barrierID, 0) { newId := add(newId, _barrierID) } // step 4: barrierId = __barrierID
 

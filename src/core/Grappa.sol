@@ -193,7 +193,7 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
      * @param _productId if of the product
      * @param _expiry timestamp of option expiry
      * @param _longStrike strike price of the long option, with 6 decimals
-     * @param _reserved either leverageFactor (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
+     * @param _reserved either leveragePCT (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
      */
     function getTokenId(TokenType _tokenType, uint40 _productId, uint256 _expiry, uint256 _longStrike, uint256 _reserved)
         external
@@ -419,6 +419,10 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
      */
     function _isValidTokenIdToMint(uint256 _tokenId) internal view {
         (TokenType optionType,, uint64 expiry, uint64 longStrike, uint64 reserved) = _tokenId.parseTokenId();
+        (uint32 leveragePCT,) = TokenIdUtil.parseReserve(reserved);
+
+        if (optionType == TokenType.PUT && leveragePCT > MAX_PUT_LEVERAGE) revert GP_BadLeverageFactor();
+        if (optionType == TokenType.CALL && leveragePCT > 0) revert GP_BadLeverageFactor();
 
         // check that you cannot mint a "credit spread" token
         if (optionType == TokenType.CALL_SPREAD && (reserved < longStrike)) revert GP_BadStrikes();

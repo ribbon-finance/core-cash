@@ -24,7 +24,6 @@ contract TokenIdUtilTest is Test {
         BarrierTriggerType triggerType,
         BarrierExerciseType exerciseType
     ) public {
-        vm.assume(barrierPCT > 0);
         vm.assume(observationFrequency <= type(BarrierObservationFrequencyType).max);
         vm.assume(triggerType <= type(BarrierTriggerType).max);
         vm.assume(exerciseType <= type(BarrierExerciseType).max);
@@ -75,6 +74,22 @@ contract TokenIdUtilTest is Test {
         assertEq(uint64(expiry), _expiry);
         assertEq(uint64(longStrike), _longStrike);
         assertEq(uint64(shortStrike), _shortStrike);
+    }
+
+    function testReserveFormatAndParseAreMirrored(uint32 leveragePCT, uint32 barrierId) public {
+        uint64 reserve = TokenIdUtil.getReserve(leveragePCT, barrierId);
+        (uint32 _leveragePCT, uint32 _barrierId) = TokenIdUtil.parseReserve(reserve);
+
+        assertEq(leveragePCT, _leveragePCT);
+        assertEq(barrierId, _barrierId);
+    }
+
+    function testReserveGetAndParseAreMirrored(uint256 leveragePCT, uint256 barrierId) public {
+        uint64 reserve = TokenIdUtil.getReserve(uint32(leveragePCT), uint32(barrierId));
+        (uint32 _leveragePCT, uint32 _barrierId) = TokenIdUtil.parseReserve(reserve);
+
+        assertEq(uint32(leveragePCT), _leveragePCT);
+        assertEq(uint32(barrierId), _barrierId);
     }
 
     function testBarrierIdFormatAndParseAreMirrored(

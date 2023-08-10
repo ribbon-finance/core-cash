@@ -21,3 +21,6 @@ uint8 constant MAX_OPTION_CONSTRUCTION = 4;
 
 ///@dev maximum amount of coupons in an instrument
 uint8 constant MAX_COUPON_CONSTRUCTION = 4;
+
+///@dev maximum amount of leverage for puts (in pct)
+uint8 constant MAX_PUT_LEVERAGE = 100;
