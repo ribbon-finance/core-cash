@@ -135,7 +135,7 @@ library TokenIdUtil {
      */
     function getReserve(uint32 leveragePCT, uint32 barrierId) internal pure returns (uint64 reserve) {
         unchecked {
-            reserve = (uint32(leveragePCT) << 16) + uint32(barrierId);
+            reserve = (uint64(leveragePCT) << 32) + uint64(barrierId);
         }
     }
 

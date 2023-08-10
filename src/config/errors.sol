@@ -41,8 +41,8 @@ error GP_InvalidExpiry();
 /// @dev put and call should not contain "short strikes"
 error GP_BadStrikes();
 
-/// @dev should include leverage factor
-error GP_BadLeverageFactor();
+/// @dev should include leverage percentage
+error GP_BadLeveragePCT();
 
 /// @dev burn or mint can only be called by corresponding engine.
 error GP_Not_Authorized_Engine();
