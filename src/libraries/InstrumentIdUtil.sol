@@ -16,7 +16,7 @@ import "../config/types.sol";
  * Instrument (296 bits + 256 bits * MAX_OPTION_CONSTRUCTION) =
  *
  *  * -------------------- | ------------------- | --------------------------------------------- |
- *  | autocallId (40 bits) | coupons (256 bits)  | options (256 bits * MAX_OPTION_CONSTRUCTION)  *
+ *  | autocallId (40 bits) | coupons (256 bits)  | options (512 bits * MAX_OPTION_CONSTRUCTION)  *
  *  * -------------------- | ------------------- | --------------------------------------------- |
  *
  *  autocallId: id of the autocall
@@ -60,15 +60,15 @@ library InstrumentIdUtil {
     function getInstrumentId(Instrument calldata instrument) internal pure returns (uint256 instrumentId) {
         bytes32 start = keccak256(abi.encode(instrument.autocallId, instrument.coupons));
 
-        uint256[] memory options = instrument.options;
+        Option[] memory options = instrument.options;
         for (uint256 i = 0; i < options.length; i++) {
-            uint256 optionId = options[i];
+            Option memory option = options[i];
 
-            if (optionId == 0) {
+            if (option.allocationPCT == 0) {
                 break;
             }
 
-            start = keccak256(abi.encode(start, optionId));
+            start = keccak256(abi.encode(start, option.allocationPCT, option.tokenId));
         }
 
         instrumentId = uint256(start);

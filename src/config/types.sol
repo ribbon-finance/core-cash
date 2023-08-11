@@ -13,7 +13,17 @@ import "./enums.sol";
 struct Instrument {
     uint40 autocallId;
     uint256 coupons;
-    uint256[] options;
+    Option[] options;
+}
+
+/**
+ * @dev struct representing an option and allocation
+ * @param allocationPCT allocation pct
+ * @param tokenId token id
+ */
+struct Option {
+    uint8 allocationPCT;
+    uint256 tokenId;
 }
 
 /**
