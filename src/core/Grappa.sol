@@ -170,6 +170,38 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
     }
 
     /**
+     * @dev parse token id into composing option details
+     * @param _tokenId product id
+     */
+    function getDetailFromTokenId2(uint256 _tokenId)
+        external
+        pure
+        returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint32 _leveragePCT, uint32 _barrierId)
+    {
+        uint64 reserved;
+
+        (tokenType, productId, expiry, longStrike, reserved) = TokenIdUtil.parseTokenId(_tokenId);
+        (_leveragePCT, _barrierId) = TokenIdUtil.parseReserve(reserved);
+    }
+
+    /**
+     * @dev parse barrier id into composing barrier details
+     * @param _barrierId barrier id
+     */
+    function getDetailFromBarrierId(uint32 _barrierId)
+        external
+        pure
+        returns (
+            uint16 barrierPCT,
+            BarrierObservationFrequencyType observationFrequency,
+            BarrierTriggerType triggerType,
+            BarrierExerciseType exerciseType
+        )
+    {
+        return TokenIdUtil.parseBarrierId(_barrierId);
+    }
+
+    /**
      * @notice    get product id from underlying, strike and collateral address
      * @dev       function will still return even if some of the assets are not registered
      * @param _underlying  underlying address
@@ -193,7 +225,7 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
      * @param _productId if of the product
      * @param _expiry timestamp of option expiry
      * @param _longStrike strike price of the long option, with 6 decimals
-     * @param _reserved either leveragePCT (and/or) barrierId, or strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
+     * @param _reserved strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
      */
     function getTokenId(TokenType _tokenType, uint40 _productId, uint256 _expiry, uint256 _longStrike, uint256 _reserved)
         external
@@ -201,6 +233,45 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
         returns (uint256 id)
     {
         id = TokenIdUtil.getTokenId(_tokenType, _productId, uint64(_expiry), uint64(_longStrike), uint64(_reserved));
+    }
+
+    /**
+     * @notice    get token id from type, productId, expiry, strike
+     * @dev       function will still return even if some of the assets are not registered
+     * @param _tokenType TokenType enum
+     * @param _productId if of the product
+     * @param _expiry timestamp of option expiry
+     * @param _longStrike strike price of the long option, with 6 decimals
+     * @param _leveragePCT leverage percentage
+     * @param _barrierId barrier id
+     */
+    function getTokenId(
+        TokenType _tokenType,
+        uint40 _productId,
+        uint256 _expiry,
+        uint256 _longStrike,
+        uint32 _leveragePCT,
+        uint32 _barrierId
+    ) external pure returns (uint256 id) {
+        id = TokenIdUtil.getTokenId(
+            _tokenType, _productId, uint64(_expiry), uint64(_longStrike), TokenIdUtil.getReserve(_leveragePCT, _barrierId)
+        );
+    }
+
+    /**
+     * @notice    get barrier id from barrier pct, observation frequency, trigger type, exercise type
+     * @param _barrierPCT percentage of the barrier relative to initial spot price
+     * @param _observationFrequency frequency of barrier observations
+     * @param _triggerType trigger type of the barrier
+     * @param _exerciseType exercise type of the barrier
+     */
+    function getBarrierId(
+        uint16 _barrierPCT,
+        BarrierObservationFrequencyType _observationFrequency,
+        BarrierTriggerType _triggerType,
+        BarrierExerciseType _exerciseType
+    ) external pure returns (uint32 id) {
+        id = TokenIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
     }
 
     /**
