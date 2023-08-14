@@ -88,6 +88,23 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
+     * @dev parse barrier id into composing barrier details
+     * @param _barrierId barrier id
+     */
+    function getDetailFromBarrierId(uint32 _barrierId)
+        external
+        pure
+        returns (
+            uint16 barrierPCT,
+            BarrierObservationFrequencyType observationFrequency,
+            BarrierTriggerType triggerType,
+            BarrierExerciseType exerciseType
+        )
+    {
+        return InstrumentIdUtil.parseBarrierId(_barrierId);
+    }
+
+    /**
      * @dev get instrument id from autocall id, coupons, options array
      * @dev       function will still return even if instrument is not registered
      * @param _instrument Instrument
@@ -95,5 +112,21 @@ contract InstrumentGrappa is Grappa {
      */
     function getInstrumentId(Instrument calldata _instrument) external pure returns (uint256 id) {
         id = InstrumentIdUtil.getInstrumentId(_instrument);
+    }
+
+    /**
+     * @notice    get barrier id from barrier pct, observation frequency, trigger type, exercise type
+     * @param _barrierPCT percentage of the barrier relative to initial spot price
+     * @param _observationFrequency frequency of barrier observations
+     * @param _triggerType trigger type of the barrier
+     * @param _exerciseType exercise type of the barrier
+     */
+    function getBarrierId(
+        uint16 _barrierPCT,
+        BarrierObservationFrequencyType _observationFrequency,
+        BarrierTriggerType _triggerType,
+        BarrierExerciseType _exerciseType
+    ) external pure returns (uint32 id) {
+        id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
     }
 }

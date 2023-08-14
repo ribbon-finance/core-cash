@@ -164,41 +164,9 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
     function getDetailFromTokenId(uint256 _tokenId)
         external
         pure
-        returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 reserved)
+        returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 shortStrike)
     {
         return TokenIdUtil.parseTokenId(_tokenId);
-    }
-
-    /**
-     * @dev parse token id into composing option details
-     * @param _tokenId product id
-     */
-    function getDetailFromTokenId2(uint256 _tokenId)
-        external
-        pure
-        returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint32 _leveragePCT, uint32 _barrierId)
-    {
-        uint64 reserved;
-
-        (tokenType, productId, expiry, longStrike, reserved) = TokenIdUtil.parseTokenId(_tokenId);
-        (_leveragePCT, _barrierId) = TokenIdUtil.parseReserve(reserved);
-    }
-
-    /**
-     * @dev parse barrier id into composing barrier details
-     * @param _barrierId barrier id
-     */
-    function getDetailFromBarrierId(uint32 _barrierId)
-        external
-        pure
-        returns (
-            uint16 barrierPCT,
-            BarrierObservationFrequencyType observationFrequency,
-            BarrierTriggerType triggerType,
-            BarrierExerciseType exerciseType
-        )
-    {
-        return TokenIdUtil.parseBarrierId(_barrierId);
     }
 
     /**
@@ -225,53 +193,14 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
      * @param _productId if of the product
      * @param _expiry timestamp of option expiry
      * @param _longStrike strike price of the long option, with 6 decimals
-     * @param _reserved strike price of the short (upper bond for call and lower bond for put) if this is a spread (6 decimals)
+     * @param _shortStrike strike price of the short (upper bond for call and lower bond for put) if this is a spread. 6 decimals
      */
-    function getTokenId(TokenType _tokenType, uint40 _productId, uint256 _expiry, uint256 _longStrike, uint256 _reserved)
+    function getTokenId(TokenType _tokenType, uint40 _productId, uint256 _expiry, uint256 _longStrike, uint256 _shortStrike)
         external
         pure
         returns (uint256 id)
     {
-        id = TokenIdUtil.getTokenId(_tokenType, _productId, uint64(_expiry), uint64(_longStrike), uint64(_reserved));
-    }
-
-    /**
-     * @notice    get token id from type, productId, expiry, strike
-     * @dev       function will still return even if some of the assets are not registered
-     * @param _tokenType TokenType enum
-     * @param _productId if of the product
-     * @param _expiry timestamp of option expiry
-     * @param _longStrike strike price of the long option, with 6 decimals
-     * @param _leveragePCT leverage percentage
-     * @param _barrierId barrier id
-     */
-    function getTokenId(
-        TokenType _tokenType,
-        uint40 _productId,
-        uint256 _expiry,
-        uint256 _longStrike,
-        uint32 _leveragePCT,
-        uint32 _barrierId
-    ) external pure returns (uint256 id) {
-        id = TokenIdUtil.getTokenId(
-            _tokenType, _productId, uint64(_expiry), uint64(_longStrike), TokenIdUtil.getReserve(_leveragePCT, _barrierId)
-        );
-    }
-
-    /**
-     * @notice    get barrier id from barrier pct, observation frequency, trigger type, exercise type
-     * @param _barrierPCT percentage of the barrier relative to initial spot price
-     * @param _observationFrequency frequency of barrier observations
-     * @param _triggerType trigger type of the barrier
-     * @param _exerciseType exercise type of the barrier
-     */
-    function getBarrierId(
-        uint16 _barrierPCT,
-        BarrierObservationFrequencyType _observationFrequency,
-        BarrierTriggerType _triggerType,
-        BarrierExerciseType _exerciseType
-    ) external pure returns (uint32 id) {
-        id = TokenIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
+        id = TokenIdUtil.getTokenId(_tokenType, _productId, uint64(_expiry), uint64(_longStrike), uint64(_shortStrike));
     }
 
     /**
@@ -489,15 +418,15 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
      * @dev make sure that the tokenId make sense
      */
     function _isValidTokenIdToMint(uint256 _tokenId) internal view {
-        (TokenType optionType,, uint64 expiry, uint64 longStrike, uint64 reserved) = _tokenId.parseTokenId();
-        (uint32 leveragePCT,) = TokenIdUtil.parseReserve(reserved);
+        (TokenType optionType,, uint64 expiry, uint64 longStrike, uint64 shortStrike) = _tokenId.parseTokenId();
 
-        if (optionType == TokenType.PUT && leveragePCT > MAX_PUT_LEVERAGE) revert GP_BadLeveragePCT();
-        if (optionType == TokenType.CALL && leveragePCT > 0) revert GP_BadLeveragePCT();
+        // check option type and strikes
+        // check that vanilla options doesn't have a shortStrike argument
+        if ((optionType == TokenType.CALL || optionType == TokenType.PUT) && (shortStrike != 0)) revert GP_BadStrikes();
 
         // check that you cannot mint a "credit spread" token
-        if (optionType == TokenType.CALL_SPREAD && (reserved < longStrike)) revert GP_BadStrikes();
-        if (optionType == TokenType.PUT_SPREAD && (reserved > longStrike)) revert GP_BadStrikes();
+        if (optionType == TokenType.CALL_SPREAD && (shortStrike < longStrike)) revert GP_BadStrikes();
+        if (optionType == TokenType.PUT_SPREAD && (shortStrike > longStrike)) revert GP_BadStrikes();
 
         // check expiry
         if (expiry <= block.timestamp) revert GP_InvalidExpiry();
@@ -514,7 +443,7 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
      *
      */
     function _getPayoutPerToken(uint256 _tokenId) internal view returns (address, address, uint256 payoutPerOption) {
-        (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 reserved) =
+        (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 shortStrike) =
             TokenIdUtil.parseTokenId(_tokenId);
 
         if (block.timestamp < expiry) revert GP_NotExpired();
@@ -530,11 +459,11 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
         if (tokenType == TokenType.CALL) {
             cashValue = MoneynessLib.getCallCashValue(expiryPrice, longStrike);
         } else if (tokenType == TokenType.CALL_SPREAD) {
-            cashValue = MoneynessLib.getCashValueDebitCallSpread(expiryPrice, longStrike, reserved);
+            cashValue = MoneynessLib.getCashValueDebitCallSpread(expiryPrice, longStrike, shortStrike);
         } else if (tokenType == TokenType.PUT) {
             cashValue = MoneynessLib.getPutCashValue(expiryPrice, longStrike);
         } else if (tokenType == TokenType.PUT_SPREAD) {
-            cashValue = MoneynessLib.getCashValueDebitPutSpread(expiryPrice, longStrike, reserved);
+            cashValue = MoneynessLib.getCashValueDebitPutSpread(expiryPrice, longStrike, shortStrike);
         }
 
         // the following logic convert cash value (amount worth) if collateral is not strike:

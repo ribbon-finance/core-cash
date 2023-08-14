@@ -28,6 +28,24 @@ contract InstrumentIdUtilTest is Test {
         instrumentRegistered[id] = true;
     }
 
+    function testBarrierIdHigherThan0(uint16 barrierPCT, uint8 observationFrequency, uint8 triggerType, uint8 exerciseType)
+        public
+    {
+        vm.assume(barrierPCT > 0 || observationFrequency > 0 || triggerType > 0 || exerciseType > 0);
+        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
+        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
+        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
+
+        uint256 id = InstrumentIdUtil.getBarrierId(
+            barrierPCT,
+            BarrierObservationFrequencyType(observationFrequency),
+            BarrierTriggerType(triggerType),
+            BarrierExerciseType(exerciseType)
+        );
+
+        assertGt(id, 0);
+    }
+
     function testAutocallIdFormatAndParseAreMirrored(bool isReverse, uint32 barrierId) public {
         uint40 id = InstrumentIdUtil.getAutocallId(isReverse, barrierId);
         (bool _isReverse, uint32 _barrierId) = InstrumentIdUtil.parseAutocallId(id);
@@ -101,5 +119,64 @@ contract InstrumentIdUtilTest is Test {
             assertEq(uint8(couponType), uint8(_couponType));
             assertEq(barrierId, _barrierId);
         }
+    }
+
+    function testBarrierIdFormatAndParseAreMirrored(
+        uint16 barrierPCT,
+        uint8 observationFrequency,
+        uint8 triggerType,
+        uint8 exerciseType
+    ) public {
+        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
+        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
+        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
+
+        uint32 id = InstrumentIdUtil.getBarrierId(
+            barrierPCT,
+            BarrierObservationFrequencyType(observationFrequency),
+            BarrierTriggerType(triggerType),
+            BarrierExerciseType(exerciseType)
+        );
+
+        (
+            uint16 _barrierPCT,
+            BarrierObservationFrequencyType _observationFrequency,
+            BarrierTriggerType _triggerType,
+            BarrierExerciseType _exerciseType
+        ) = InstrumentIdUtil.parseBarrierId(id);
+
+        assertEq(barrierPCT, _barrierPCT);
+        assertEq(uint8(observationFrequency), uint8(_observationFrequency));
+        assertEq(uint8(triggerType), uint8(_triggerType));
+        assertEq(uint8(exerciseType), uint8(_exerciseType));
+    }
+
+    function testBarrierIdGetAndParseAreMirrored(
+        uint256 barrierPCT,
+        uint8 observationFrequency,
+        uint8 triggerType,
+        uint8 exerciseType
+    ) public {
+        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
+        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
+        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
+
+        uint32 id = InstrumentIdUtil.getBarrierId(
+            uint16(barrierPCT),
+            BarrierObservationFrequencyType(observationFrequency),
+            BarrierTriggerType(triggerType),
+            BarrierExerciseType(exerciseType)
+        );
+        (
+            uint16 _barrierPCT,
+            BarrierObservationFrequencyType _observationFrequency,
+            BarrierTriggerType _triggerType,
+            BarrierExerciseType _exerciseType
+        ) = InstrumentIdUtil.parseBarrierId(id);
+
+        assertEq(uint16(barrierPCT), _barrierPCT);
+        assertEq(observationFrequency, uint8(_observationFrequency));
+        assertEq(triggerType, uint8(_triggerType));
+        assertEq(exerciseType, uint8(_exerciseType));
     }
 }

@@ -21,11 +21,6 @@ contract TokenIdUtilTester {
         return result;
     }
 
-    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) external pure returns (uint256) {
-        uint256 result = TokenIdUtil.convertBarrierObservationFrequencyType(frequency);
-        return result;
-    }
-
     function isExpired(uint256 tokenId) external view returns (bool expired) {
         bool result = TokenIdUtil.isExpired(tokenId);
         return result;
@@ -42,19 +37,6 @@ contract TokenIdLibTest is Test {
 
     function setUp() public {
         tester = new TokenIdUtilTester();
-    }
-
-    function testConvertBarrierObservationFrequencyType() public {
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_DAY), 1 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_WEEK), 7 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.TWO_WEEKS), 14 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_MONTH), 30 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.TWO_MONTHS), 60 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.THREE_MONTHS), 90 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.SIX_MONTHS), 180 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.NINE_MONTHS), 270 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_YEAR), 365 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.NONE), 1);
     }
 
     function testIsExpired() public {

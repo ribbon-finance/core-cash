@@ -78,33 +78,29 @@ contract CashOptionTokenTest is Test {
         option.mint(address(this), tokenId, 1);
     }
 
-    function testCannotMintPutWithLargeLeveragePCT() public {
+    function testCannotMintCallWithShortStrike() public {
         uint8 engineId = 1;
         uint256 expiry = block.timestamp + 1 days;
 
         vm.mockCall(grappa, abi.encodeWithSelector(Grappa(grappa).engines.selector, engineId), abi.encode(address(this)));
 
-        uint64 reserve = TokenIdUtil.getReserve(101, 0);
-
         uint40 productId = ProductIdUtil.getProductId(0, engineId, 0, 0, 0);
-        uint256 tokenId = TokenIdUtil.getTokenId(TokenType.PUT, productId, uint64(expiry), 20, reserve);
+        uint256 tokenId = TokenIdUtil.getTokenId(TokenType.CALL, productId, uint64(expiry), 20, 40);
 
-        vm.expectRevert(GP_BadLeveragePCT.selector);
+        vm.expectRevert(GP_BadStrikes.selector);
         option.mint(address(this), tokenId, 1);
     }
 
-    function testCannotMintCallWithNonZeroLeveragePCT() public {
+    function testCannotMintPutWithShortStrike() public {
         uint8 engineId = 1;
         uint256 expiry = block.timestamp + 1 days;
 
         vm.mockCall(grappa, abi.encodeWithSelector(Grappa(grappa).engines.selector, engineId), abi.encode(address(this)));
 
-        uint64 reserve = TokenIdUtil.getReserve(10, 0);
-
         uint40 productId = ProductIdUtil.getProductId(0, engineId, 0, 0, 0);
-        uint256 tokenId = TokenIdUtil.getTokenId(TokenType.CALL, productId, uint64(expiry), 20, reserve);
+        uint256 tokenId = TokenIdUtil.getTokenId(TokenType.PUT, productId, uint64(expiry), 20, 40);
 
-        vm.expectRevert(GP_BadLeveragePCT.selector);
+        vm.expectRevert(GP_BadStrikes.selector);
         option.mint(address(this), tokenId, 1);
     }
 
