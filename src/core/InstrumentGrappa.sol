@@ -104,6 +104,31 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
+     * @dev parse coupon id into composing coupon details
+     * @param _coupon one coupon
+     */
+    function getDetailFromCouponId(uint64 _coupon)
+        external
+        pure
+        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+    {
+        return InstrumentIdUtil.parseCouponId(_coupon);
+    }
+
+    /**
+     * @dev parse coupon id into composing coupon details
+     * @param _coupons all coupons
+     * @param _index index of specific coupon
+     */
+    function getDetailFromCouponId(uint256 _coupons, uint256 _index)
+        external
+        pure
+        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+    {
+        return InstrumentIdUtil.parseCouponId(_coupons, _index);
+    }
+
+    /**
      * @dev parse barrier id into composing barrier details
      * @param _barrierId barrier id
      */
@@ -137,6 +162,29 @@ contract InstrumentGrappa is Grappa {
      */
     function getAutocallId(bool _isReverse, uint32 _barrierId) external pure returns (uint256 id) {
         id = InstrumentIdUtil.getAutocallId(_isReverse, _barrierId);
+    }
+
+    /**
+     * @dev get coupon id from coupon pct, num installments, coupon type, barrier id
+     * @param _couponPCT coupon percentage of notional
+     * @param _numInstallements number of installments
+     * @param _couponType coupon type
+     * @param _barrierId barrier id
+     */
+    function getCouponId(uint16 _couponPCT, uint16 _numInstallements, CouponType _couponType, uint32 _barrierId)
+        external
+        pure
+        returns (uint64 id)
+    {
+        id = InstrumentIdUtil.getCouponId(_couponPCT, _numInstallements, _couponType, _barrierId);
+    }
+
+    /**
+     * @dev get coupons from coupon array
+     * @param _coupons coupons
+     */
+    function getCoupons(uint64[] calldata _coupons) external pure returns (uint256 coupons) {
+        coupons = InstrumentIdUtil.getCoupons(_coupons);
     }
 
     /**
