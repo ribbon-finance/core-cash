@@ -96,6 +96,14 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
+     * @dev parse autocall id into composing autocall details
+     * @param _autocallId autocall id
+     */
+    function getDetailFromAutocallId(uint40 _autocallId) external pure returns (bool isReverse, uint32 barrierId) {
+        return InstrumentIdUtil.parseAutocallId(_autocallId);
+    }
+
+    /**
      * @dev parse barrier id into composing barrier details
      * @param _barrierId barrier id
      */
@@ -123,6 +131,15 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
+     * @dev get autocall id from isReverse, barrierId
+     * @param _isReverse is reverse
+     * @param _barrierId barrier id
+     */
+    function getAutocallId(bool _isReverse, uint32 _barrierId) external pure returns (uint256 id) {
+        id = InstrumentIdUtil.getAutocallId(_isReverse, _barrierId);
+    }
+
+    /**
      * @notice    get barrier id from barrier pct, observation frequency, trigger type, exercise type
      * @param _barrierPCT percentage of the barrier relative to initial spot price
      * @param _observationFrequency frequency of barrier observations
@@ -145,8 +162,12 @@ contract InstrumentGrappa is Grappa {
      * @param _option   option
      * @param _amount   amount to settle
      */
-    function settleInstrument(address _account, Option calldata _option, uint256 _amount) external nonReentrant returns (Balance[] memory payouts) {
-      // Settle Instrument
+    function settleInstrument(address _account, Option calldata _option, uint256 _amount)
+        external
+        nonReentrant
+        returns (Balance[] memory payouts)
+    {
+        // Settle Instrument
     }
 
     /* =====================================
