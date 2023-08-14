@@ -19,13 +19,11 @@ struct Instrument {
 /**
  * @dev struct representing an option and allocation
  * @param participationPCT participation pct
- * @param leveragePCT leverage factor
  * @param barrierId barrier id
  * @param tokenId token id
  */
 struct Option {
     uint16 participationPCT;
-    uint32 leveragePCT;
     uint32 barrierId;
     uint256 tokenId;
 }

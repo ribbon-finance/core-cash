@@ -80,7 +80,7 @@ library InstrumentIdUtil {
                 break;
             }
 
-            start = keccak256(abi.encode(start, option.participationPCT, option.leveragePCT, option.barrierId, option.tokenId));
+            start = keccak256(abi.encode(start, option.participationPCT, option.barrierId, option.tokenId));
         }
 
         instrumentId = uint256(start);
