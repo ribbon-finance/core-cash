@@ -8,6 +8,7 @@ import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
 
 // interfaces
 import {ICashOptionToken} from "../interfaces/ICashOptionToken.sol";
+import {IMarginEngine} from "../interfaces/IMarginEngine.sol";
 
 // libraries
 import {BalanceUtil} from "../libraries/BalanceUtil.sol";
@@ -43,6 +44,13 @@ contract InstrumentGrappa is Grappa {
     /// @dev instrumentId => instrument
     mapping(uint256 => Instrument) public instruments;
 
+    /*///////////////////////////////////////////////////////////////
+                                Events
+    //////////////////////////////////////////////////////////////*/
+
+    event OptionSettled(
+        address account, uint16 participationPCT, uint32 barrierId, uint256 tokenId, uint256 amountSettled, uint256 payout
+    );
     event InstrumentRegistered(uint256 id);
 
     /*///////////////////////////////////////////////////////////////
@@ -128,5 +136,71 @@ contract InstrumentGrappa is Grappa {
         BarrierExerciseType _exerciseType
     ) external pure returns (uint32 id) {
         id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
+    }
+
+    /* =====================================
+     *          Internal Functions
+     * ====================================**/
+
+    /**
+     * @notice burn option token and get out cash value at expiry
+     *
+     * @param _account  who to settle for
+     * @param _option   option
+     * @param _amount   amount to settle
+     */
+    function _settleOption(address _account, Option calldata _option, uint256 _amount) internal returns (uint256) {
+        (address engine, address collateral, uint256 payout) = _getPayout(_option, _amount.toUint64());
+
+        emit OptionSettled(_account, _option.participationPCT, _option.barrierId, _option.tokenId, _amount, payout);
+
+        optionToken.burnGrappaOnly(_account, _option.tokenId, _amount);
+
+        IMarginEngine(engine).payCashValue(collateral, _account, payout);
+
+        return payout;
+    }
+
+    /**
+     * @dev calculate the payout for one option token
+     *
+     * @param _option  option struct
+     * @param _amount   amount to settle
+     *
+     * @return engine engine to settle
+     * @return collateral asset to settle in
+     * @return payout amount paid
+     *
+     */
+    function _getPayout(Option calldata _option, uint64 _amount)
+        internal
+        view
+        returns (address engine, address collateral, uint256 payout)
+    {
+        uint256 payoutPerOption;
+        (engine, collateral, payoutPerOption) = _getPayoutPerToken(_option);
+        payout = payoutPerOption * _amount;
+        unchecked {
+            payout = payout / UNIT;
+        }
+    }
+
+    /**
+     * @dev calculate the payout for one option token
+     *
+     * @param _option  option struct
+     *
+     * @return engine engine to settle
+     * @return collateral asset to settle in
+     * @return payoutPerOption amount paid
+     *
+     */
+    function _getPayoutPerToken(Option calldata _option) internal view returns (address, address, uint256) {
+        (address engine, address collateral, uint256 payoutPerOption) = _getPayoutPerToken(_option.tokenId);
+
+        // Add participation pct update
+        // Add barried pct update
+
+        return (engine, collateral, payoutPerOption);
     }
 }
