@@ -138,6 +138,17 @@ contract InstrumentGrappa is Grappa {
         id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
     }
 
+    /**
+     * @notice burn option token and get out cash value at expiry
+     *
+     * @param _account  who to settle for
+     * @param _option   option
+     * @param _amount   amount to settle
+     */
+    function settleInstrument(address _account, Option calldata _option, uint256 _amount) external nonReentrant returns (Balance[] memory payouts) {
+      // Settle Instrument
+    }
+
     /* =====================================
      *          Internal Functions
      * ====================================**/
