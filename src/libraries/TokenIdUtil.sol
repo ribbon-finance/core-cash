@@ -76,6 +76,20 @@ library TokenIdUtil {
     }
 
     /**
+     * @notice parse strike id from tokenId
+     * @dev more efficient than parsing tokenId and than parse productId
+     * @param tokenId token id
+     * @return strikeId
+     */
+    function parseStrikeId(uint256 tokenId) internal pure returns (uint8 strikeId) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            // strikeId is bits 8-16 of productId
+            strikeId := shr(200, tokenId)
+        }
+    }
+
+    /**
      * @notice parse engine id from tokenId
      * @dev more efficient than parsing tokenId and than parse productId
      * @param tokenId token id

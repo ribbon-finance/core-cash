@@ -218,7 +218,7 @@ contract InstrumentGrappa is Grappa {
     function settleInstrument(address _account, uint256 _instrumentId, uint256 _amount)
         external
         nonReentrant
-        returns (Balance[] memory payouts)
+        returns (OptionBalance[] memory payouts)
     {
         // Settle Instrument
 
@@ -230,7 +230,13 @@ contract InstrumentGrappa is Grappa {
         // _settleCoupons()
         // _settleOptions()
 
-        Instrument memory _instrument = instruments[_instrumentId];
+        payouts = getInstrumentPayout(_instrumentId, _amount);
+
+        // emit OptionSettled(_account, _option.participationPCT, _option.barrierId, _option.tokenId, _amount, payout);
+        //
+        // optionToken.burnGrappaOnly(_account, _option.tokenId, _amount);
+        //
+        // IMarginEngine(engine).payCashValue(collateral, _account, payout);
     }
 
     /* =====================================
@@ -245,83 +251,61 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
-     * @notice burn option token and get out cash value at expiry
-     *
-     * @param _account  who to settle for
-     * @param _option   option
-     * @param _amount   amount to settle
-     */
-    function _settleOption(address _account, Option calldata _option, uint256 _amount) internal returns (uint256) {
-        (address engine, address collateral, uint256 payout) = _getPayout(_option, _amount.toUint64());
-
-        emit OptionSettled(_account, _option.participationPCT, _option.barrierId, _option.tokenId, _amount, payout);
-
-        optionToken.burnGrappaOnly(_account, _option.tokenId, _amount);
-
-        IMarginEngine(engine).payCashValue(collateral, _account, payout);
-
-        return payout;
-    }
-
-    /**
      * @dev calculate the payout for instruments
      *
-     * @param _instrumentId instrument id
-     * @param _amount   amount to settle
-     *
-     * @return payout
-     */
-    function _getInstrumentPayout(uint256 _instrumentId, uint64 _amount) internal view returns (uint256 payout) {
-        uint256 payoutPerInstrument;
-        (payoutPerInstrument) = _getPayoutPerInstrument(_instrumentId);
-        payout = payoutPerInstrument * _amount;
-        unchecked {
-            payout = payout / UNIT;
-        }
-    }
-
-    /**
-     * @dev calculate the payout for one option token
-     *
-     * @param _option  option struct
-     * @param _amount   amount to settle
-     *
-     * @return engine engine to settle
-     * @return collateral asset to settle in
-     * @return payout amount paid
-     *
-     */
-    function _getPayout(Option calldata _option, uint64 _amount)
-        internal
-        view
-        returns (address engine, address collateral, uint256 payout)
-    {
-        uint256 payoutPerOption;
-        (engine, collateral, payoutPerOption) = _getPayoutPerOption(_option);
-        payout = payoutPerOption * _amount;
-        unchecked {
-            payout = payout / UNIT;
-        }
-    }
-
-    /**
-     * @dev calculate the payout for one instrument token
-     *
      * @param _instrumentId  instrument id
-     * @return payoutPerInstrument amount paid
+     * @param _amount   amount to settle
+     * @return payouts amounts paid
      *
      */
-    function _getPayoutPerInstrument(uint256 _instrumentId) internal view returns (OptionBalance[] memory) {
-        Instrument memory _instrument = instruments[_instrumentId];
-        uint40 autocallId = _instrument.autocallId;
-        uint256 coupons = _instrument.coupons;
-        Option[] memory options = _instrument.options;
+    function getInstrumentPayout(uint256 _instrumentId, uint256 _amount) public view returns (OptionBalance[] memory payouts) {
+        uint8 engineId = instruments[_instrumentId].engineId;
+        uint40 autocallId = instruments[_instrumentId].autocallId;
+        uint256 coupons = instruments[_instrumentId].coupons;
+        Option[] memory options = instruments[_instrumentId].options;
 
         //TODO
 
-        for (uint256 i = 0; i < MAX_COUPON_CONSTRUCTION; i++) {}
+        for (uint256 i; i < MAX_COUPON_CONSTRUCTION;) {
+            uint256 payout = _getPayoutPerCoupon(coupons, i) * _amount;
+            unchecked {
+                payout = payout / UNIT;
+            }
+            uint40 productId = ProductIdUtil.getProductId(0, engineId, 0, 0, TokenIdUtil.parseStrikeId(options[0].tokenId));
+            payouts = _addToPayouts(payouts, TokenIdUtil.getTokenId(TokenType(0), productId, 0, 0, 0), payout);
+            unchecked {
+                ++i;
+            }
+        }
 
-        return (0);
+        for (uint256 i; i < options.length;) {
+            Option memory option = options[i];
+            uint256 payout = _getPayoutPerOption(option) * _amount;
+            unchecked {
+                payout = payout / UNIT;
+            }
+            payouts = _addToPayouts(payouts, option.tokenId, payout);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @dev calculate the payout for one coupon unit
+     *
+     * @param _coupons  coupons
+     * @param _index  index within coupons
+     *
+     * @return payoutPerCoupon amount paid
+     *
+     */
+    function _getPayoutPerCoupon(uint256 _coupons, uint256 _index) internal pure returns (uint256) {
+        //TODO
+        (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
+            getDetailFromCouponId(_coupons, _index);
+        uint256 payoutPerCoupon = 0;
+        return payoutPerCoupon;
     }
 
     /**
@@ -329,15 +313,13 @@ contract InstrumentGrappa is Grappa {
      *
      * @param _option  option struct
      *
-     * @return engine engine to settle
-     * @return collateral asset to settle in
      * @return payoutPerOption amount paid
      *
      */
-    function _getPayoutPerOption(Option calldata _option) internal view returns (address, address, uint256) {
-        (address engine, address collateral, uint256 payoutPerOption) = _getPayoutPerToken(_option.tokenId);
+    function _getPayoutPerOption(Option memory _option) internal view returns (uint256) {
+        (,, uint256 payoutPerOption) = _getPayoutPerToken(_option.tokenId);
         //TODO (add participation, barrier pct update)
-        return (engine, collateral, payoutPerOption);
+        return payoutPerOption;
     }
 
     /**
