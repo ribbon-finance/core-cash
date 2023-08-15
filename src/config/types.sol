@@ -41,12 +41,17 @@ struct Balance {
 }
 
 /**
- * @dev struct representing the option balance
- * @param tokenId token id (includes engine id, collateral id)
+ * @dev struct representing the balance for a given instrument component
+ * @param isCoupon whether it is coupon (true) or option (false)
+ * @param index index in coupons or options array
+ * @param engineId engine id
+ * @param balance struct with collateral id
  */
-struct OptionBalance {
-    uint256 tokenId;
-    uint80 amount;
+struct InstrumentComponentBalance {
+    bool isCoupon;
+    uint8 index;
+    uint8 engineId;
+    Balance balance;
 }
 
 /**

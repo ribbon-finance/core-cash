@@ -11,7 +11,7 @@ import {ICashOptionToken} from "../interfaces/ICashOptionToken.sol";
 import {IMarginEngine} from "../interfaces/IMarginEngine.sol";
 
 // libraries
-import {OptionBalanceUtil} from "../libraries/OptionBalanceUtil.sol";
+import {InstrumentComponentBalanceUtil} from "../libraries/InstrumentComponentBalanceUtil.sol";
 import {MoneynessLib} from "../libraries/MoneynessLib.sol";
 import {NumberUtil} from "../libraries/NumberUtil.sol";
 import {ProductIdUtil} from "../libraries/ProductIdUtil.sol";
@@ -27,7 +27,7 @@ import "../config/errors.sol";
 import {Grappa} from "./Grappa.sol";
 
 contract InstrumentGrappa is Grappa {
-    using OptionBalanceUtil for OptionBalance[];
+    using InstrumentComponentBalanceUtil for InstrumentComponentBalance[];
     using FixedPointMathLib for uint256;
     using NumberUtil for uint256;
     using ProductIdUtil for uint40;
@@ -218,19 +218,16 @@ contract InstrumentGrappa is Grappa {
     function settleInstrument(address _account, uint256 _instrumentId, uint256 _amount)
         external
         nonReentrant
-        returns (OptionBalance[] memory payouts)
+        returns (InstrumentComponentBalance[] memory payouts)
     {
         // Settle Instrument
 
-        // getPayout
-        // burn options
-        // pay cash value
+        uint8 instrumentEngineId = instruments[_instrumentId].engineId;
+        uint40 autocallId = instruments[_instrumentId].autocallId;
+        uint256 coupons = instruments[_instrumentId].coupons;
+        Option[] memory options = instruments[_instrumentId].options;
 
-        // _settleAutocall()
-        // _settleCoupons()
-        // _settleOptions()
-
-        payouts = getInstrumentPayout(_instrumentId, _amount);
+        payouts = getInstrumentPayout(instrumentEngineId, autocallId, coupons, options, _amount);
 
         // emit OptionSettled(_account, _option.participationPCT, _option.barrierId, _option.tokenId, _amount, payout);
         //
@@ -253,38 +250,48 @@ contract InstrumentGrappa is Grappa {
     /**
      * @dev calculate the payout for instruments
      *
-     * @param _instrumentId  instrument id
+     * @param _instrumentEngineId  instrument engine id
+     * @param _autocallId  autocall id
+     * @param _coupons  coupons
+     * @param _options  options
      * @param _amount   amount to settle
      * @return payouts amounts paid
      *
      */
-    function getInstrumentPayout(uint256 _instrumentId, uint256 _amount) public view returns (OptionBalance[] memory payouts) {
-        uint8 engineId = instruments[_instrumentId].engineId;
-        uint40 autocallId = instruments[_instrumentId].autocallId;
-        uint256 coupons = instruments[_instrumentId].coupons;
-        Option[] memory options = instruments[_instrumentId].options;
-
+    function getInstrumentPayout(
+        uint8 _instrumentEngineId,
+        uint40 _autocallId,
+        uint256 _coupons,
+        Option[] memory _options,
+        uint256 _amount
+    ) public view returns (InstrumentComponentBalance[] memory payouts) {
         //TODO
 
-        for (uint256 i; i < MAX_COUPON_CONSTRUCTION;) {
-            uint256 payout = _getPayoutPerCoupon(coupons, i) * _amount;
+        for (uint8 i; i < MAX_COUPON_CONSTRUCTION;) {
+            uint256 payout = _getPayoutPerCoupon(_coupons, i) * _amount;
             unchecked {
                 payout = payout / UNIT;
             }
-            uint40 productId = ProductIdUtil.getProductId(0, engineId, 0, 0, TokenIdUtil.parseStrikeId(options[0].tokenId));
-            payouts = _addToPayouts(payouts, TokenIdUtil.getTokenId(TokenType(0), productId, 0, 0, 0), payout);
+            payouts = _addToPayouts(payouts, true, i, _instrumentEngineId, TokenIdUtil.parseStrikeId(_options[0].tokenId), payout);
             unchecked {
                 ++i;
             }
         }
 
-        for (uint256 i; i < options.length;) {
-            Option memory option = options[i];
+        for (uint8 i; i < _options.length;) {
+            Option memory option = _options[i];
             uint256 payout = _getPayoutPerOption(option) * _amount;
             unchecked {
                 payout = payout / UNIT;
             }
-            payouts = _addToPayouts(payouts, option.tokenId, payout);
+            payouts = _addToPayouts(
+                payouts,
+                false,
+                i,
+                TokenIdUtil.parseEngineId(option.tokenId),
+                TokenIdUtil.parseCollateralId(option.tokenId),
+                payout
+            );
             unchecked {
                 ++i;
             }
@@ -323,25 +330,26 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
-     * @dev add an entry to array of OptionBalance
-     * @param payouts existing payout array
-     * @param tokenId new tokendId
-     * @param payout new payout
+     * @dev add an entry to array of InstrumentComponentBalance
+     * @param _payouts existing payout array
+     * @param _isCoupon whether it is coupon (true) or option (false)
+     * @param _index index in coupons or options array
+     * @param _engineId engine id
+     * @param _collateralId collateral id
+     * @param _payout new payout
      */
-    function _addToPayouts(OptionBalance[] memory payouts, uint256 tokenId, uint256 payout)
-        internal
-        pure
-        returns (OptionBalance[] memory)
-    {
-        if (payout == 0) return payouts;
+    function _addToPayouts(
+        InstrumentComponentBalance[] memory _payouts,
+        bool _isCoupon,
+        uint8 _index,
+        uint8 _engineId,
+        uint8 _collateralId,
+        uint256 _payout
+    ) internal pure returns (InstrumentComponentBalance[] memory) {
+        if (_payout == 0) return _payouts;
 
-        (bool found, uint256 index) = payouts.indexOf(TokenIdUtil.parseEngineId(tokenId), TokenIdUtil.parseCollateralId(tokenId));
-        if (!found) {
-            payouts = payouts.append(OptionBalance(tokenId, payout.toUint80()));
-        } else {
-            payouts[index].amount += payout.toUint80();
-        }
+        _payouts.append(InstrumentComponentBalance(_isCoupon, _index, _engineId, Balance(_collateralId, _payout.toUint80())));
 
-        return payouts;
+        return _payouts;
     }
 }
