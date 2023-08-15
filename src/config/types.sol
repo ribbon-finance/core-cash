@@ -6,11 +6,13 @@ import "./enums.sol";
 /**
  * @dev struct representing an instrument which
  *             is a construction of options and coupons
+ * @param engineId representing engine Id
  * @param autocallId representing the autocall feature if included
  * @param coupons packed uint of all the coupons (64 bits each) in the instrument (4 max)
  * @param options array of all the options in the instrument
  */
 struct Instrument {
+    uint8 engineId;
     uint40 autocallId;
     uint256 coupons;
     Option[] options;

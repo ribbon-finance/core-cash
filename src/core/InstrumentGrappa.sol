@@ -70,7 +70,7 @@ contract InstrumentGrappa is Grappa {
      */
     function registerInstrument(Instrument calldata _instrument) external returns (uint256 id) {
         _isValidInstrumentToRegister(_instrument);
-        
+
         id = InstrumentIdUtil.getInstrumentId(_instrument);
 
         if (instruments[id].options.length == 0) revert GP_InstrumentAlreadyRegistered();
@@ -91,10 +91,10 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromInstrumentId(uint256 _instrumentId)
         public
         view
-        returns (uint40 autocallId, uint256 coupons, Option[] memory options)
+        returns (uint8 engineId, uint40 autocallId, uint256 coupons, Option[] memory options)
     {
         Instrument memory _instrument = instruments[_instrumentId];
-        return (_instrument.autocallId, _instrument.coupons, _instrument.options);
+        return (_instrument.engineId, _instrument.autocallId, _instrument.coupons, _instrument.options);
     }
 
     /**
@@ -219,22 +219,25 @@ contract InstrumentGrappa is Grappa {
     {
         // Settle Instrument
 
+        // getPayout
+        // burn options
+        // pay cash value
+
         // _settleAutocall()
         // _settleCoupons()
         // _settleOptions()
-
     }
 
     /* =====================================
      *          Internal Functions
      * ====================================**/
 
-     /**
-      * @dev make sure that the instrument make sense
-      */
-     function _isValidInstrumentToRegister(Instrument calldata _instrument) internal view {
-       // TODO
-     }
+    /**
+     * @dev make sure that the instrument make sense
+     */
+    function _isValidInstrumentToRegister(Instrument calldata _instrument) internal view {
+        // TODO
+    }
 
     /**
      * @notice burn option token and get out cash value at expiry
@@ -256,21 +259,17 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
-     * @dev calculate the payout for one instrument token
+     * @dev calculate the payout for instruments
      *
      * @param _instrumentId instrument id
      * @param _amount   amount to settle
      *
      * @return payout
      */
-    function _getPayout(uint256 _instrumentId, uint64 _amount)
-        internal
-        view
-        returns (uint256 payout)
-    {
-        uint256 payoutPerOption;
-        (payoutPerInstrument) = _getPayoutPerToken(_instrumentId);
-        payout = payoutPerOption * _amount;
+    function _getInstrumentPayout(uint256 _instrumentId, uint64 _amount) internal view returns (uint256 payout) {
+        uint256 payoutPerInstrument;
+        (payoutPerInstrument) = _getPayoutPerInstrument(_instrumentId);
+        payout = payoutPerInstrument * _amount;
         unchecked {
             payout = payout / UNIT;
         }
@@ -307,9 +306,10 @@ contract InstrumentGrappa is Grappa {
      * @return payoutPerInstrument amount paid
      *
      */
-    function _getPayoutPerToken(uint256 _instrumentId) internal view returns (uint256) {
-        Instrument calldata _instrument = instruments[_instrumentId];
+    function _getPayoutPerInstrument(uint256 _instrumentId) internal view returns (uint256) {
+        Instrument memory _instrument = instruments[_instrumentId];
         //TODO
+
         return (0);
     }
 
