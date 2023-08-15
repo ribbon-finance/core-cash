@@ -48,9 +48,7 @@ contract InstrumentGrappa is Grappa {
                                 Events
     //////////////////////////////////////////////////////////////*/
 
-    event OptionSettled(
-        address account, uint16 participationPCT, uint32 barrierId, uint256 tokenId, uint256 amountSettled, uint256 payout
-    );
+    event InstrumentComponentSettled(address account, bool isCoupon, uint8 index, uint256 payout);
     event InstrumentRegistered(uint256 id);
 
     /*///////////////////////////////////////////////////////////////
@@ -229,11 +227,23 @@ contract InstrumentGrappa is Grappa {
 
         payouts = getInstrumentPayout(instrumentEngineId, autocallId, coupons, options, _amount);
 
-        // emit OptionSettled(_account, _option.participationPCT, _option.barrierId, _option.tokenId, _amount, payout);
-        //
-        // optionToken.burnGrappaOnly(_account, _option.tokenId, _amount);
-        //
-        // IMarginEngine(engine).payCashValue(collateral, _account, payout);
+        for (uint8 i; i < payouts.length;) {
+            InstrumentComponentBalance memory payout = payouts[i];
+            emit InstrumentComponentSettled(_account, payout.isCoupon, payout.index, payout.balance.amount);
+
+            if (!payout.isCoupon) {
+                optionToken.burnGrappaOnly(engines[instrumentEngineId], options[payout.index].tokenId, _amount);
+            }
+
+            IMarginEngine(engines[payout.engineId]).payCashValue(
+                assets[payout.balance.collateralId].addr, _account, payout.balance.amount
+            );
+            unchecked {
+                ++i;
+            }
+        }
+
+        instrumentToken.burnGrappaOnly(_account, _instrumentId, _amount);
     }
 
     /* =====================================
