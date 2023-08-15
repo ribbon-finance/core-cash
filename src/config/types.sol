@@ -6,7 +6,7 @@ import "./enums.sol";
 /**
  * @dev struct representing an instrument which
  *             is a construction of options and coupons
- * @param engineId representing engine Id
+ * @param engineId representing engine id
  * @param autocallId representing the autocall feature if included
  * @param coupons packed uint of all the coupons (64 bits each) in the instrument (4 max)
  * @param options array of all the options in the instrument
@@ -37,6 +37,15 @@ struct Option {
  */
 struct Balance {
     uint8 collateralId;
+    uint80 amount;
+}
+
+/**
+ * @dev struct representing the option balance
+ * @param tokenId token id (includes engine id, collateral id)
+ */
+struct OptionBalance {
+    uint256 tokenId;
     uint80 amount;
 }
 

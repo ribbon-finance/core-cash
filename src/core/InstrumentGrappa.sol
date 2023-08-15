@@ -11,7 +11,7 @@ import {ICashOptionToken} from "../interfaces/ICashOptionToken.sol";
 import {IMarginEngine} from "../interfaces/IMarginEngine.sol";
 
 // libraries
-import {BalanceUtil} from "../libraries/BalanceUtil.sol";
+import {OptionBalanceUtil} from "../libraries/OptionBalanceUtil.sol";
 import {MoneynessLib} from "../libraries/MoneynessLib.sol";
 import {NumberUtil} from "../libraries/NumberUtil.sol";
 import {ProductIdUtil} from "../libraries/ProductIdUtil.sol";
@@ -27,7 +27,7 @@ import "../config/errors.sol";
 import {Grappa} from "./Grappa.sol";
 
 contract InstrumentGrappa is Grappa {
-    using BalanceUtil for Balance[];
+    using OptionBalanceUtil for OptionBalance[];
     using FixedPointMathLib for uint256;
     using NumberUtil for uint256;
     using ProductIdUtil for uint40;
@@ -91,17 +91,20 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromInstrumentId(uint256 _instrumentId)
         public
         view
-        returns (uint8 engineId, uint40 autocallId, uint256 coupons, Option[] memory options)
+        returns (address engine, bool isReverse, uint32 autocallBarrierId, uint256 coupons, Option[] memory options)
     {
         Instrument memory _instrument = instruments[_instrumentId];
-        return (_instrument.engineId, _instrument.autocallId, _instrument.coupons, _instrument.options);
+        engine = engines[_instrument.engineId];
+        (isReverse, autocallBarrierId) = getDetailFromAutocallId(_instrument.autocallId);
+        coupons = _instrument.coupons;
+        options = _instrument.options;
     }
 
     /**
      * @dev parse autocall id into composing autocall details
      * @param _autocallId autocall id
      */
-    function getDetailFromAutocallId(uint40 _autocallId) external pure returns (bool isReverse, uint32 barrierId) {
+    function getDetailFromAutocallId(uint40 _autocallId) public pure returns (bool isReverse, uint32 barrierId) {
         return InstrumentIdUtil.parseAutocallId(_autocallId);
     }
 
@@ -123,7 +126,7 @@ contract InstrumentGrappa is Grappa {
      * @param _index index of specific coupon
      */
     function getDetailFromCouponId(uint256 _coupons, uint256 _index)
-        external
+        public
         pure
         returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
     {
@@ -226,6 +229,8 @@ contract InstrumentGrappa is Grappa {
         // _settleAutocall()
         // _settleCoupons()
         // _settleOptions()
+
+        Instrument memory _instrument = instruments[_instrumentId];
     }
 
     /* =====================================
@@ -292,7 +297,7 @@ contract InstrumentGrappa is Grappa {
         returns (address engine, address collateral, uint256 payout)
     {
         uint256 payoutPerOption;
-        (engine, collateral, payoutPerOption) = _getPayoutPerToken(_option);
+        (engine, collateral, payoutPerOption) = _getPayoutPerOption(_option);
         payout = payoutPerOption * _amount;
         unchecked {
             payout = payout / UNIT;
@@ -306,9 +311,15 @@ contract InstrumentGrappa is Grappa {
      * @return payoutPerInstrument amount paid
      *
      */
-    function _getPayoutPerInstrument(uint256 _instrumentId) internal view returns (uint256) {
+    function _getPayoutPerInstrument(uint256 _instrumentId) internal view returns (OptionBalance[] memory) {
         Instrument memory _instrument = instruments[_instrumentId];
+        uint40 autocallId = _instrument.autocallId;
+        uint256 coupons = _instrument.coupons;
+        Option[] memory options = _instrument.options;
+
         //TODO
+
+        for (uint256 i = 0; i < MAX_COUPON_CONSTRUCTION; i++) {}
 
         return (0);
     }
@@ -323,9 +334,32 @@ contract InstrumentGrappa is Grappa {
      * @return payoutPerOption amount paid
      *
      */
-    function _getPayoutPerToken(Option calldata _option) internal view returns (address, address, uint256) {
+    function _getPayoutPerOption(Option calldata _option) internal view returns (address, address, uint256) {
         (address engine, address collateral, uint256 payoutPerOption) = _getPayoutPerToken(_option.tokenId);
         //TODO (add participation, barrier pct update)
         return (engine, collateral, payoutPerOption);
+    }
+
+    /**
+     * @dev add an entry to array of OptionBalance
+     * @param payouts existing payout array
+     * @param tokenId new tokendId
+     * @param payout new payout
+     */
+    function _addToPayouts(OptionBalance[] memory payouts, uint256 tokenId, uint256 payout)
+        internal
+        pure
+        returns (OptionBalance[] memory)
+    {
+        if (payout == 0) return payouts;
+
+        (bool found, uint256 index) = payouts.indexOf(TokenIdUtil.parseEngineId(tokenId), TokenIdUtil.parseCollateralId(tokenId));
+        if (!found) {
+            payouts = payouts.append(OptionBalance(tokenId, payout.toUint80()));
+        } else {
+            payouts[index].amount += payout.toUint80();
+        }
+
+        return payouts;
     }
 }
