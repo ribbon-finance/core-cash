@@ -229,15 +229,13 @@ contract InstrumentGrappa is Grappa {
 
         for (uint8 i; i < payouts.length;) {
             InstrumentComponentBalance memory payout = payouts[i];
-            emit InstrumentComponentSettled(_account, payout.isCoupon, payout.index, payout.balance.amount);
+            emit InstrumentComponentSettled(_account, payout.isCoupon, payout.index, payout.amount);
 
             if (!payout.isCoupon) {
                 optionToken.burnGrappaOnly(engines[instrumentEngineId], options[payout.index].tokenId, _amount);
             }
 
-            IMarginEngine(engines[payout.engineId]).payCashValue(
-                assets[payout.balance.collateralId].addr, _account, payout.balance.amount
-            );
+            IMarginEngine(engines[payout.engineId]).payCashValue(assets[payout.collateralId].addr, _account, payout.amount);
             unchecked {
                 ++i;
             }
@@ -358,7 +356,7 @@ contract InstrumentGrappa is Grappa {
     ) internal pure returns (InstrumentComponentBalance[] memory) {
         if (_payout == 0) return _payouts;
 
-        _payouts.append(InstrumentComponentBalance(_isCoupon, _index, _engineId, Balance(_collateralId, _payout.toUint80())));
+        _payouts.append(InstrumentComponentBalance(_isCoupon, _index, _engineId, _collateralId, _payout.toUint80()));
 
         return _payouts;
     }

@@ -45,13 +45,15 @@ struct Balance {
  * @param isCoupon whether it is coupon (true) or option (false)
  * @param index index in coupons or options array
  * @param engineId engine id
- * @param balance struct with collateral id
+ * @param collateralId grappa asset id
+ * @param amount amount the asset
  */
 struct InstrumentComponentBalance {
     bool isCoupon;
     uint8 index;
     uint8 engineId;
-    Balance balance;
+    uint8 collateralId;
+    uint80 amount;
 }
 
 /**
