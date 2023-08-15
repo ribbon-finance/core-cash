@@ -136,7 +136,7 @@ contract InstrumentGrappa is Grappa {
      * @param _barrierId barrier id
      */
     function getDetailFromBarrierId(uint32 _barrierId)
-        external
+        public
         pure
         returns (
             uint16 barrierPCT,
@@ -146,6 +146,18 @@ contract InstrumentGrappa is Grappa {
         )
     {
         return InstrumentIdUtil.parseBarrierId(_barrierId);
+    }
+
+    /**
+     * @dev parse barrier observation frequency type
+     * @param _observationFrequency observation frequency enum
+     */
+    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType _observationFrequency)
+        public
+        pure
+        returns (uint256 frequency)
+    {
+        frequency = InstrumentIdUtil.convertBarrierObservationFrequencyType(_observationFrequency);
     }
 
     /**
@@ -273,8 +285,7 @@ contract InstrumentGrappa is Grappa {
         Option[] memory _options,
         uint256 _amount
     ) public view returns (InstrumentComponentBalance[] memory payouts) {
-        //TODO
-
+        // Add payouts of all the coupons
         for (uint8 i; i < MAX_COUPON_CONSTRUCTION;) {
             uint256 payout = _getPayoutPerCoupon(_coupons, i) * _amount;
             unchecked {
@@ -286,6 +297,7 @@ contract InstrumentGrappa is Grappa {
             }
         }
 
+        // Add payouts of all the options
         for (uint8 i; i < _options.length;) {
             Option memory option = _options[i];
             uint256 payout = _getPayoutPerOption(option) * _amount;
@@ -319,6 +331,14 @@ contract InstrumentGrappa is Grappa {
         //TODO
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
+
+        (
+            uint16 barrierPCT,
+            BarrierObservationFrequencyType observationFrequency,
+            BarrierTriggerType triggerType,
+            BarrierExerciseType exerciseType
+        ) = getDetailFromBarrierId(barrierId);
+
         uint256 payoutPerCoupon = 0;
         return payoutPerCoupon;
     }
