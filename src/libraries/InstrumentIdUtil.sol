@@ -8,6 +8,8 @@ import "../config/errors.sol";
 import "../config/constants.sol";
 import "../config/types.sol";
 
+import "./TokenIdUtil.sol";
+
 /**
  *
  *
@@ -66,12 +68,55 @@ import "../config/types.sol";
  */
 
 library InstrumentIdUtil {
+    struct InstrumentExtended {
+        uint64 initialSpotPrice;
+        uint8 engineId;
+        Autocall autocall;
+        Coupon[] coupons;
+        OptionExtended[] options;
+    }
+
+    struct Autocall {
+        bool isReverse;
+        Barrier barrier;
+    }
+
+    struct Coupon {
+        uint16 couponPCT;
+        uint16 numInstallements;
+        CouponType couponType;
+        Barrier barrier;
+    }
+
+    struct OptionExtended {
+        uint16 participationPCT;
+        Barrier barrier;
+        uint256 token;
+    }
+
+    struct Barrier {
+        uint16 barrierPCT;
+        BarrierObservationFrequencyType observationFrequency;
+        BarrierTriggerType triggerType;
+        BarrierExerciseType exerciseType;
+    }
+
+    function serialize(InstrumentExtended calldata _instrument) internal pure returns (Instrument memory) {
+        return Instrument(
+            _instrument.initialSpotPrice,
+            _instrument.engineId,
+            _serializeAutocall(_instrument.autocall),
+            _serializeCoupons(_instrument.coupons),
+            _serializeOptions(_instrument.options)
+        );
+    }
+
     /**
      * @notice calculate ERC1155 token id for given instrument parameters.
      * @param instrument Instrument struct
      * @return instrumentId id of the instrument
      */
-    function getInstrumentId(Instrument calldata instrument) internal pure returns (uint256 instrumentId) {
+    function getInstrumentId(Instrument memory instrument) internal pure returns (uint256 instrumentId) {
         bytes32 start =
             keccak256(abi.encode(instrument.initialSpotPrice, instrument.engineId, instrument.autocallId, instrument.coupons));
 
@@ -120,7 +165,7 @@ library InstrumentIdUtil {
      * @param couponArr array of coupons
      * @return coupons coupons
      */
-    function getCoupons(uint64[] calldata couponArr) internal pure returns (uint256 coupons) {
+    function getCoupons(uint64[] memory couponArr) internal pure returns (uint256 coupons) {
         for (uint256 i = 0; i < couponArr.length; i++) {
             coupons = coupons + (uint256(couponArr[i]) << (64 * (MAX_COUPON_CONSTRUCTION - i - 1)));
         }
@@ -264,6 +309,63 @@ library InstrumentIdUtil {
             return (365 days);
         } else {
             return 1;
+        }
+    }
+
+    function _serializeAutocall(Autocall memory _autocall) private pure returns (uint40 autocallId) {
+        // Serialize autocallId
+        uint32 autocallBarrierId = getBarrierId(
+            _autocall.barrier.barrierPCT,
+            _autocall.barrier.observationFrequency,
+            _autocall.barrier.triggerType,
+            _autocall.barrier.exerciseType
+        );
+        autocallId = getAutocallId(_autocall.isReverse, autocallBarrierId);
+    }
+
+    function _serializeCoupons(Coupon[] memory _coupons) private pure returns (uint256 coupons) {
+        uint64[] memory couponsArr = new uint64[](MAX_COUPON_CONSTRUCTION);
+        uint256 couponLen = _coupons.length;
+
+        //REQUIRE CORRECT LENGTH
+
+        for (uint8 i; i < couponLen;) {
+            Coupon memory coupon = _coupons[i];
+            uint32 couponBarrierId = getBarrierId(
+                coupon.barrier.barrierPCT,
+                coupon.barrier.observationFrequency,
+                coupon.barrier.triggerType,
+                coupon.barrier.exerciseType
+            );
+
+            couponsArr[i] = getCouponId(coupon.couponPCT, coupon.numInstallements, coupon.couponType, couponBarrierId);
+            unchecked {
+                ++i;
+            }
+        }
+
+        coupons = getCoupons(couponsArr);
+    }
+
+    function _serializeOptions(OptionExtended[] memory _options) private pure returns (Option[] memory options) {
+        options = new Option[](MAX_OPTION_CONSTRUCTION);
+
+        //REQUIRE CORRECT LENGTH
+
+        uint256 optionLen = _options.length;
+        for (uint8 i; i < optionLen;) {
+            OptionExtended memory option = _options[i];
+            uint32 optionBarrierId = getBarrierId(
+                option.barrier.barrierPCT,
+                option.barrier.observationFrequency,
+                option.barrier.triggerType,
+                option.barrier.exerciseType
+            );
+
+            options[i] = Option(option.participationPCT, optionBarrierId, option.token);
+            unchecked {
+                ++i;
+            }
         }
     }
 }
