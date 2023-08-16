@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {Setup} from "./Setup.t.sol";
+import "./Setup.t.sol";
 import "../../src/config/types.sol";
 import "../../src/config/errors.sol";
 
 /**
  * @dev test getPayout function on different token types
  */
-contract GrappaPayoutTest is Setup {
-    function setUp() public {
+contract GrappaPayoutTest is GrappaSetup {
+    function setUp() public virtual {
         _setupGrappaTestEnvironment();
     }
 

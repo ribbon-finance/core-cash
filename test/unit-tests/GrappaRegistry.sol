@@ -145,7 +145,7 @@ contract RegisterEngineTest is Test {
 }
 
 /**
- * @dev test grappa functions around registering engines
+ * @dev test grappa functions around registering oracles
  */
 contract RegisterOracleTest is Test {
     Grappa public grappa;

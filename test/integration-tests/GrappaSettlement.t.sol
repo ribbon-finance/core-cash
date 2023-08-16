@@ -6,8 +6,8 @@ import "./Setup.t.sol";
 /**
  * @dev test getPayout function on different token types
  */
-contract GrappaSettlementTest is Setup {
-    function setUp() public {
+contract GrappaSettlementTest is GrappaSetup {
+    function setUp() public virtual {
         _setupGrappaTestEnvironment();
     }
 

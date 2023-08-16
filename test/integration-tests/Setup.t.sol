@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 // import test base and helpers.
 import "forge-std/Test.sol";
 
+import {InstrumentGrappa} from "../../src/core/InstrumentGrappa.sol";
 import {Grappa} from "../../src/core/Grappa.sol";
 import {GrappaProxy} from "../../src/core/GrappaProxy.sol";
 import {CashOptionToken} from "../../src/core/CashOptionToken.sol";
@@ -23,7 +24,7 @@ import "../../src/config/constants.sol";
 
 /**
  * @notice util contract to setup testing environment
- * @dev this contract setup the Grappa proxy, CashOptionToken, and deploy mocked engine and mocked oracles
+ * @dev this contract setup will deploy mocked engine and mocked oracles
  */
 contract Setup is Test, Utilities {
     Grappa public implementation;
@@ -48,20 +49,18 @@ contract Setup is Test, Utilities {
 
     uint64 internal expiry;
 
-    function _setupGrappaTestEnvironment() internal {
+    function _setupTestEnvironment(address _proxyAddr, address _grappaImplementation) internal {
         weth = new MockERC20("WETH", "WETH", 18); // nonce: 1
         usdc = new MockERC20("USDC", "USDC", 6); // nonce: 2
 
-        address proxyAddr = predictAddress(address(this), 5);
-
-        option = new CashOptionToken(proxyAddr, address(0)); // nonce: 3
-
-        implementation = new Grappa(address(option)); // nonce: 4
+        implementation = Grappa(_grappaImplementation);
 
         bytes memory data = abi.encodeWithSelector(Grappa.initialize.selector, address(this));
-        grappa = Grappa(address(new GrappaProxy(address(implementation), data))); // nonce: 5
+        grappa = Grappa(address(new GrappaProxy(address(implementation), data))); // nonce: 3
 
-        assertEq(proxyAddr, address(grappa));
+        option = CashOptionToken(address(grappa.optionToken()));
+
+        assertEq(_proxyAddr, address(grappa));
 
         wethId = grappa.registerAsset(address(weth));
         usdcId = grappa.registerAsset(address(usdc));
@@ -115,5 +114,35 @@ contract Setup is Test, Utilities {
 
     function onERC1155Received(address, address, uint256, uint256, bytes calldata) external virtual returns (bytes4) {
         return this.onERC1155Received.selector;
+    }
+}
+
+/**
+ * @notice util contract to setup testing environment
+ * @dev this contract sets up the Grappa proxy and CashOptionToken
+ */
+contract GrappaSetup is Setup {
+    function _setupGrappaTestEnvironment() internal {
+        address proxyAddr = predictAddress(address(this), 5);
+        address option = address(new CashOptionToken(proxyAddr, address(0)));
+        _setupTestEnvironment(proxyAddr, address(new Grappa(option)));
+    }
+}
+
+/**
+ * @notice util contract to setup testing environment
+ * @dev this contract sets up the InstrumentGrappa proxy and two CashOptionTokens
+ */
+contract InstrumentGrappaSetup is Setup {
+    CashOptionToken internal instrumentOption;
+    uint256 internal instrumentId;
+
+    function _setupInstrumentGrappaTestEnvironment() internal {
+        address proxyAddr = predictAddress(address(this), 5);
+        address option = address(new CashOptionToken(proxyAddr, address(0)));
+        instrumentOption = new CashOptionToken(proxyAddr, address(0));
+
+        _setupTestEnvironment(proxyAddr, address(new InstrumentGrappa(option, address(instrumentOption))));
+        // instrumentId =
     }
 }
