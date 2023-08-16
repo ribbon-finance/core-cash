@@ -391,6 +391,10 @@ contract InstrumentGrappa is Grappa {
      *
      */
     function _getPayoutPerOption(Option memory _option) internal view returns (uint256) {
+        if (!TokenIdUtil.isExpired(_option.tokenId)) {
+            return 0;
+        }
+
         (,, uint256 payoutPerOption) = _getPayoutPerToken(_option.tokenId);
         //TODO (add participation, barrier pct update)
         return payoutPerOption;
