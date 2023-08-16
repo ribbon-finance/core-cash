@@ -367,13 +367,8 @@ contract InstrumentGrappa is Grappa {
      *
      */
     function _getPayoutPerCoupon(uint256 _coupons, uint256 _index) internal pure returns (uint256) {
-        //TODO
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
-
-        if (numInstallements == 0) {
-            return 0;
-        }
 
         (
             uint16 barrierPCT,
@@ -382,8 +377,9 @@ contract InstrumentGrappa is Grappa {
             BarrierExerciseType exerciseType
         ) = getDetailFromBarrierId(barrierId);
 
-        uint256 payoutPerCoupon = 0;
-        return payoutPerCoupon;
+        //TODO
+
+        return 0;
     }
 
     /**
