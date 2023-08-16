@@ -268,6 +268,43 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
+     * @dev calculate the payout for one option
+     *
+     * @param _option  option
+     * @param _amount amount to settle
+     *
+     * @return payout amount paid
+     *
+     */
+    function getOptionPayout(Option memory _option, uint256 _amount) public view returns (uint256 payout) {
+        uint256 payoutPerOption;
+        (payoutPerOption) = _getPayoutPerOption(_option);
+        payout = payoutPerOption * _amount;
+        unchecked {
+            payout = payout / UNIT;
+        }
+    }
+
+    /**
+     * @dev calculate the payout for one coupon
+     *
+     * @param _coupons  coupons
+     * @param _index index
+     * @param _amount amount to settle
+     *
+     * @return payout amount paid
+     *
+     */
+    function getCouponPayout(uint256 _coupons, uint256 _index, uint256 _amount) public view returns (uint256 payout) {
+        uint256 payoutPerCoupon;
+        (payoutPerCoupon) = _getPayoutPerCoupon(_coupons, _index);
+        payout = payoutPerCoupon * _amount;
+        unchecked {
+            payout = payout / UNIT;
+        }
+    }
+
+    /**
      * @dev calculate the payout for instruments
      *
      * @param _instrumentEngineId  instrument engine id
@@ -287,10 +324,7 @@ contract InstrumentGrappa is Grappa {
     ) public view returns (InstrumentComponentBalance[] memory payouts) {
         // Add payouts of all the coupons
         for (uint8 i; i < MAX_COUPON_CONSTRUCTION;) {
-            uint256 payout = _getPayoutPerCoupon(_coupons, i) * _amount;
-            unchecked {
-                payout = payout / UNIT;
-            }
+            uint256 payout = getCouponPayout(_coupons, i, _amount);
             payouts = _addToPayouts(payouts, true, i, _instrumentEngineId, TokenIdUtil.parseStrikeId(_options[0].tokenId), payout);
             unchecked {
                 ++i;
@@ -300,10 +334,7 @@ contract InstrumentGrappa is Grappa {
         // Add payouts of all the options
         for (uint8 i; i < _options.length;) {
             Option memory option = _options[i];
-            uint256 payout = _getPayoutPerOption(option) * _amount;
-            unchecked {
-                payout = payout / UNIT;
-            }
+            uint256 payout = getOptionPayout(option, _amount);
             payouts = _addToPayouts(
                 payouts,
                 false,
@@ -331,6 +362,10 @@ contract InstrumentGrappa is Grappa {
         //TODO
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
+
+        if (numInstallements == 0) {
+            return 0;
+        }
 
         (
             uint16 barrierPCT,
