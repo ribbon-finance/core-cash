@@ -13,12 +13,14 @@ import "../config/types.sol";
  *
  * Instrument ID = KECCAK256(struct Instrument)
  *
- * Instrument (304 bits + 256 bits * MAX_OPTION_CONSTRUCTION) =
+ * Instrument (368 bits + 256 bits * MAX_OPTION_CONSTRUCTION) =
  *
- *  * ------------------ * -------------------- | ------------------- | --------------------------------------------- |
- *  | engineId (8 bits)  | autocallId (40 bits) | coupons (256 bits)  | options (512 bits * MAX_OPTION_CONSTRUCTION)  *
- *  *------------------- * -------------------- | ------------------- | --------------------------------------------- |
+ *  * ------------------ | --------------------------- | -------------------- | ------------------- | --------------------------------------------- |
+ *  | engineId (8 bits)  | initialSpotPrice (64 bits)  | autocallId (40 bits) | coupons (256 bits)  | options (512 bits * MAX_OPTION_CONSTRUCTION)  *
+ *  *------------------- | --------------------------- | -------------------- | ------------------- | --------------------------------------------- |
  *
+ *  engineId: id of the engine
+ *  initialSpotPrice: initial spot price at creation
  *  autocallId: id of the autocall
  *  coupons: packed coupons
  *  options: array of options
@@ -70,7 +72,8 @@ library InstrumentIdUtil {
      * @return instrumentId id of the instrument
      */
     function getInstrumentId(Instrument calldata instrument) internal pure returns (uint256 instrumentId) {
-        bytes32 start = keccak256(abi.encode(instrument.engineId, instrument.autocallId, instrument.coupons));
+        bytes32 start =
+            keccak256(abi.encode(instrument.initialSpotPrice, instrument.engineId, instrument.autocallId, instrument.coupons));
 
         Option[] memory options = instrument.options;
         for (uint256 i = 0; i < options.length; i++) {
