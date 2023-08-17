@@ -92,6 +92,18 @@ contract InstrumentGrappa is Grappa {
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @dev serialize an instrument
+     * @param _instrument Instrument to serialize
+     * @return instrument struct
+     */
+    function serialize(InstrumentIdUtil.InstrumentExtended calldata _instrument)
+        external
+        returns (Instrument memory instrument)
+    {
+        instrument = InstrumentIdUtil.serialize(_instrument);
+    }
+
+    /**
      * @dev parse instrument id into composing features, coupons, options
      * @param _instrumentId instrument id`
      */
@@ -180,10 +192,20 @@ contract InstrumentGrappa is Grappa {
     /**
      * @dev get instrument id from autocall id, coupons, options array
      * @dev       function will still return even if instrument is not registered
-     * @param _instrument Instrument
+     * @param _instrument Instrument struct
      * @return id instrument ID
      */
     function getInstrumentId(Instrument calldata _instrument) external pure returns (uint256 id) {
+        id = InstrumentIdUtil.getInstrumentId(_instrument);
+    }
+
+    /**
+     * @dev get instrument id from autocall id, coupons, options array
+     * @dev       function will still return even if instrument is not registered
+     * @param _instrument InstrumentExtended
+     * @return id instrument ID
+     */
+    function getInstrumentId(InstrumentIdUtil.InstrumentExtended memory _instrument) external pure returns (uint256 id) {
         id = InstrumentIdUtil.getInstrumentId(_instrument);
     }
 
