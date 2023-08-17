@@ -110,9 +110,9 @@ library InstrumentIdUtil {
         return Instrument(
             _instrument.initialSpotPrice,
             _instrument.engineId,
-            _serializeAutocall(_instrument.autocall),
-            _serializeCoupons(_instrument.coupons),
-            _serializeOptions(_instrument.options)
+            serializeAutocall(_instrument.autocall),
+            serializeCoupons(_instrument.coupons),
+            serializeOptions(_instrument.options)
         );
     }
 
@@ -331,7 +331,7 @@ library InstrumentIdUtil {
      * @param _autocall Autocall struct
      * @return autocallId
      */
-    function _serializeAutocall(Autocall memory _autocall) private pure returns (uint40 autocallId) {
+    function serializeAutocall(Autocall memory _autocall) private pure returns (uint40 autocallId) {
         uint32 autocallBarrierId = getBarrierId(
             _autocall.barrier.barrierPCT,
             _autocall.barrier.observationFrequency,
@@ -346,7 +346,7 @@ library InstrumentIdUtil {
      * @param _coupons Coupon struct array
      * @return coupons
      */
-    function _serializeCoupons(Coupon[] memory _coupons) private pure returns (uint256 coupons) {
+    function serializeCoupons(Coupon[] memory _coupons) private pure returns (uint256 coupons) {
         uint64[] memory couponsArr = new uint64[](MAX_COUPON_CONSTRUCTION);
 
         for (uint8 i; i < _coupons.length;) {
@@ -372,7 +372,7 @@ library InstrumentIdUtil {
      * @param _options OptionExtended struct array
      * @return options
      */
-    function _serializeOptions(OptionExtended[] memory _options) private pure returns (Option[] memory options) {
+    function serializeOptions(OptionExtended[] memory _options) private pure returns (Option[] memory options) {
         options = new Option[](MAX_OPTION_CONSTRUCTION);
 
         for (uint8 i; i < _options.length;) {

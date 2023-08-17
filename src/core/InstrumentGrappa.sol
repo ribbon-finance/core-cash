@@ -57,7 +57,7 @@ contract InstrumentGrappa is Grappa {
 
     /// @dev set immutables in constructor
     /// @dev also set the implementation contract to initialized = true
-    constructor(address _optionToken, address _instrumentToken) Grappa(_optionToken) initializer {
+    constructor(address _optionToken, address _instrumentToken) Grappa(_optionToken) {
         instrumentToken = ICashOptionToken(_instrumentToken);
     }
 
@@ -82,6 +82,9 @@ contract InstrumentGrappa is Grappa {
 
         for (uint8 i; i < _instrument.options.length;) {
             instruments[id].options.push(sInstrument.options[i]);
+            unchecked {
+                ++i;
+            }
         }
 
         emit InstrumentRegistered(id);

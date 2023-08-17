@@ -26,6 +26,7 @@ import "../../src/config/constants.sol";
  * @notice util contract to setup testing environment
  * @dev this contract setup will deploy mocked engine and mocked oracles
  */
+
 contract Setup is Test, Utilities {
     Grappa public implementation;
     Grappa public grappa;
@@ -138,7 +139,7 @@ contract InstrumentGrappaSetup is Setup {
     uint256 internal instrumentId;
 
     function _setupInstrumentGrappaTestEnvironment() internal {
-        address proxyAddr = predictAddress(address(this), 5);
+        address proxyAddr = predictAddress(address(this), 6);
         address option = address(new CashOptionToken(proxyAddr, address(0)));
         instrumentOption = new CashOptionToken(proxyAddr, address(0));
 

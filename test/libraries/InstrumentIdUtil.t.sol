@@ -12,11 +12,6 @@ import "../../src/config/types.sol";
  * @dev tester contract to make coverage works
  */
 contract InstrumentIdUtilTester {
-    function getInstrumentId(Instrument calldata instrument) external pure returns (uint256 instrumentId) {
-        uint256 result = InstrumentIdUtil.getInstrumentId(instrument);
-        return result;
-    }
-
     function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) external pure returns (uint256) {
         uint256 result = InstrumentIdUtil.convertBarrierObservationFrequencyType(frequency);
         return result;
@@ -30,9 +25,40 @@ contract InstrumentIdLibTest is Test {
     uint256 public constant base = UNIT;
 
     InstrumentIdUtilTester tester;
+    InstrumentIdUtil.InstrumentExtended internal instrument;
+    uint32 internal barrierId;
 
     function setUp() public {
         tester = new InstrumentIdUtilTester();
+        instrument.initialSpotPrice = 1;
+        instrument.engineId = 1;
+        InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
+            uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))
+        );
+        barrierId = InstrumentIdUtil.getBarrierId(
+            barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType, barrier.exerciseType
+        );
+
+        instrument.autocall = InstrumentIdUtil.Autocall(true, barrier);
+        instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
+        instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
+    }
+
+    function testSerialize() public {
+        Instrument memory sInstrument = InstrumentIdUtil.serialize(instrument);
+
+        assertEq(sInstrument.initialSpotPrice, 1);
+        assertEq(sInstrument.engineId, 1);
+        assertEq(sInstrument.autocallId, InstrumentIdUtil.getAutocallId(true, barrierId));
+
+        uint64[] memory coupons = new uint64[](1);
+
+        coupons[0] = InstrumentIdUtil.getCouponId(5, 6, CouponType(uint8(3)), barrierId);
+
+        assertEq(sInstrument.coupons, InstrumentIdUtil.getCoupons(coupons));
+        assertEq(sInstrument.options[0].participationPCT, 5);
+        assertEq(sInstrument.options[0].barrierId, barrierId);
+        assertEq(sInstrument.options[0].tokenId, 1);
     }
 
     function testConvertBarrierObservationFrequencyType() public {
