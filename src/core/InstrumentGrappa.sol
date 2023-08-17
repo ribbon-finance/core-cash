@@ -115,17 +115,16 @@ contract InstrumentGrappa is Grappa {
         view
         returns (
             uint64 initialSpotPrice,
-            address engine,
-            bool isReverse,
-            uint32 autocallBarrierId,
+            uint8 engine,
+            uint40 autocallId,
             uint256 coupons,
             Option[] memory options
         )
     {
         Instrument memory _instrument = instruments[_instrumentId];
         initialSpotPrice = _instrument.initialSpotPrice;
-        engine = engines[_instrument.engineId];
-        (isReverse, autocallBarrierId) = getDetailFromAutocallId(_instrument.autocallId);
+        engine = _instrument.engineId;
+        autocallId = _instrument.autocallId;
         coupons = _instrument.coupons;
         options = _instrument.options;
     }

@@ -182,3 +182,18 @@ contract GrappaSettlementTest is GrappaSetup {
         engine.mintOptionToken(address(this), tokenId, 1e6);
     }
 }
+
+/**
+ * @dev test getPayout function on different token types
+ */
+contract InstrumentGrappaSettlementTest is GrappaSettlementTest, InstrumentGrappaSetup {
+    function setUp() public override {
+        _setupInstrumentGrappaTestEnvironment();
+    }
+
+    // TODO
+    // settleInstrument()
+    // getOptionPayout()
+    // getCouponPayout()
+    // getInstrumentPayout()
+}

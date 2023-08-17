@@ -17,6 +17,7 @@ import {Utilities} from "../utils/Utilities.sol";
 
 import {ProductIdUtil} from "../../src/libraries/ProductIdUtil.sol";
 import {TokenIdUtil} from "../../src/libraries/TokenIdUtil.sol";
+import {InstrumentIdUtil} from "../../src/libraries/InstrumentIdUtil.sol";
 
 import "../../src/config/errors.sol";
 import "../../src/config/enums.sol";
@@ -137,6 +138,10 @@ contract GrappaSetup is Setup {
 contract InstrumentGrappaSetup is Setup {
     CashOptionToken internal instrumentOption;
     uint256 internal instrumentId;
+    InstrumentGrappa internal instrumentGrappa;
+
+    InstrumentIdUtil.InstrumentExtended internal instrument;
+    uint32 internal barrierId;
 
     function _setupInstrumentGrappaTestEnvironment() internal {
         address proxyAddr = predictAddress(address(this), 6);
@@ -144,6 +149,24 @@ contract InstrumentGrappaSetup is Setup {
         instrumentOption = new CashOptionToken(proxyAddr, address(0));
 
         _setupTestEnvironment(proxyAddr, address(new InstrumentGrappa(option, address(instrumentOption))));
-        // instrumentId =
+        instrumentGrappa = InstrumentGrappa(address(grappa));
+        instrumentId = _load();
+    }
+
+    function _load() internal returns (uint256 id) {
+        instrument.initialSpotPrice = 1;
+        instrument.engineId = 1;
+        InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
+            uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))
+        );
+        barrierId = InstrumentIdUtil.getBarrierId(
+            barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType, barrier.exerciseType
+        );
+
+        instrument.autocall = InstrumentIdUtil.Autocall(true, barrier);
+        instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
+        instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
+
+        id = instrumentGrappa.getInstrumentId(instrument);
     }
 }

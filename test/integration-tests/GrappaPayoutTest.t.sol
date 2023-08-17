@@ -148,3 +148,14 @@ contract GrappaPayoutTest is GrappaSetup {
         assertEq(result[1].amount, expectedWETH);
     }
 }
+
+/**
+ * @dev test getPayout function on different token types
+ */
+contract InstrumentGrappaPayoutTest is GrappaPayoutTest, InstrumentGrappaSetup {
+    function setUp() public override {
+        _setupInstrumentGrappaTestEnvironment();
+    }
+
+    // TODO
+}
