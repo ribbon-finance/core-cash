@@ -101,7 +101,12 @@ library InstrumentIdUtil {
         BarrierExerciseType exerciseType;
     }
 
-    function serialize(InstrumentExtended calldata _instrument) internal pure returns (Instrument memory) {
+    /**
+     * @notice serialize instrument
+     * @param _instrument InstrumentExtended struct
+     * @return instrument
+     */
+    function serialize(InstrumentExtended memory _instrument) internal pure returns (Instrument memory) {
         return Instrument(
             _instrument.initialSpotPrice,
             _instrument.engineId,
@@ -113,14 +118,14 @@ library InstrumentIdUtil {
 
     /**
      * @notice calculate ERC1155 token id for given instrument parameters.
-     * @param instrument Instrument struct
+     * @param _instrument Instrument struct
      * @return instrumentId id of the instrument
      */
-    function getInstrumentId(Instrument memory instrument) internal pure returns (uint256 instrumentId) {
+    function getInstrumentId(Instrument memory _instrument) internal pure returns (uint256 instrumentId) {
         bytes32 start =
-            keccak256(abi.encode(instrument.initialSpotPrice, instrument.engineId, instrument.autocallId, instrument.coupons));
+            keccak256(abi.encode(_instrument.initialSpotPrice, _instrument.engineId, _instrument.autocallId, _instrument.coupons));
 
-        Option[] memory options = instrument.options;
+        Option[] memory options = _instrument.options;
         for (uint256 i = 0; i < options.length; i++) {
             Option memory option = options[i];
 
@@ -132,6 +137,15 @@ library InstrumentIdUtil {
         }
 
         instrumentId = uint256(start);
+    }
+
+    /**
+     * @notice calculate ERC1155 token id for given instrument parameters.
+     * @param _instrument InstrumentExtended struct
+     * @return instrumentId id of the instrument
+     */
+    function getInstrumentId(InstrumentExtended memory _instrument) internal pure returns (uint256 instrumentId) {
+        return getInstrumentId(serialize(_instrument));
     }
 
     /**
@@ -312,8 +326,12 @@ library InstrumentIdUtil {
         }
     }
 
+    /**
+     * @notice serialize autocall struct
+     * @param _autocall Autocall struct
+     * @return autocallId
+     */
     function _serializeAutocall(Autocall memory _autocall) private pure returns (uint40 autocallId) {
-        // Serialize autocallId
         uint32 autocallBarrierId = getBarrierId(
             _autocall.barrier.barrierPCT,
             _autocall.barrier.observationFrequency,
@@ -323,13 +341,15 @@ library InstrumentIdUtil {
         autocallId = getAutocallId(_autocall.isReverse, autocallBarrierId);
     }
 
+    /**
+     * @notice serialize coupons
+     * @param _coupons Coupon struct array
+     * @return coupons
+     */
     function _serializeCoupons(Coupon[] memory _coupons) private pure returns (uint256 coupons) {
         uint64[] memory couponsArr = new uint64[](MAX_COUPON_CONSTRUCTION);
-        uint256 couponLen = _coupons.length;
 
-        //REQUIRE CORRECT LENGTH
-
-        for (uint8 i; i < couponLen;) {
+        for (uint8 i; i < _coupons.length;) {
             Coupon memory coupon = _coupons[i];
             uint32 couponBarrierId = getBarrierId(
                 coupon.barrier.barrierPCT,
@@ -347,13 +367,15 @@ library InstrumentIdUtil {
         coupons = getCoupons(couponsArr);
     }
 
+    /**
+     * @notice serialize options
+     * @param _options OptionExtended struct array
+     * @return options
+     */
     function _serializeOptions(OptionExtended[] memory _options) private pure returns (Option[] memory options) {
         options = new Option[](MAX_OPTION_CONSTRUCTION);
 
-        //REQUIRE CORRECT LENGTH
-
-        uint256 optionLen = _options.length;
-        for (uint8 i; i < optionLen;) {
+        for (uint8 i; i < _options.length;) {
             OptionExtended memory option = _options[i];
             uint32 optionBarrierId = getBarrierId(
                 option.barrier.barrierPCT,

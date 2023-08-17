@@ -66,14 +66,23 @@ contract InstrumentGrappa is Grappa {
      * @param _instrument Instrument to register
      * @return id instrument ID
      */
-    function registerInstrument(Instrument calldata _instrument) external returns (uint256 id) {
+    function registerInstrument(InstrumentIdUtil.InstrumentExtended calldata _instrument) external returns (uint256 id) {
         _isValidInstrumentToRegister(_instrument);
 
-        id = InstrumentIdUtil.getInstrumentId(_instrument);
+        Instrument memory sInstrument = InstrumentIdUtil.serialize(_instrument);
 
-        if (instruments[id].options.length == 0) revert GP_InstrumentAlreadyRegistered();
+        id = InstrumentIdUtil.getInstrumentId(sInstrument);
 
-        instruments[id] = _instrument;
+        if (instruments[id].options.length > 0) revert GP_InstrumentAlreadyRegistered();
+
+        instruments[id].initialSpotPrice = sInstrument.initialSpotPrice;
+        instruments[id].engineId = sInstrument.engineId;
+        instruments[id].autocallId = sInstrument.autocallId;
+        instruments[id].coupons = sInstrument.coupons;
+
+        for (uint8 i; i < _instrument.options.length;) {
+            instruments[id].options.push(sInstrument.options[i]);
+        }
 
         emit InstrumentRegistered(id);
     }
@@ -271,7 +280,7 @@ contract InstrumentGrappa is Grappa {
     /**
      * @dev make sure that the instrument make sense
      */
-    function _isValidInstrumentToRegister(Instrument calldata _instrument) internal view {
+    function _isValidInstrumentToRegister(InstrumentIdUtil.InstrumentExtended memory _instrument) internal view {
         // TODO
     }
 
