@@ -113,13 +113,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromInstrumentId(uint256 _instrumentId)
         public
         view
-        returns (
-            uint64 initialSpotPrice,
-            uint8 engine,
-            uint40 autocallId,
-            uint256 coupons,
-            Option[] memory options
-        )
+        returns (uint64 initialSpotPrice, uint8 engine, uint40 autocallId, uint256 coupons, Option[] memory options)
     {
         Instrument memory _instrument = instruments[_instrumentId];
         initialSpotPrice = _instrument.initialSpotPrice;

@@ -224,15 +224,14 @@ contract RegisterInstrumentTest is Test {
         grappa.registerInstrument(instrument);
         vm.expectRevert(GP_InstrumentAlreadyRegistered.selector);
         grappa.registerInstrument(instrument);
-
     }
 
     function testRegisterInstrument() public {
         uint256 id = grappa.registerInstrument(instrument);
         assertEq(id, instrumentId);
 
-
-        (uint64 initialSpotPrice,uint8 engineId,uint40 autocallId,uint256 coupons, Option[] memory options) = grappa.getDetailFromInstrumentId(id);
+        (uint64 initialSpotPrice, uint8 engineId, uint40 autocallId, uint256 coupons, Option[] memory options) =
+            grappa.getDetailFromInstrumentId(id);
         Instrument memory _sInstrument = grappa.serialize(instrument);
 
         assertEq(initialSpotPrice, _sInstrument.initialSpotPrice);
@@ -241,12 +240,12 @@ contract RegisterInstrumentTest is Test {
         assertEq(coupons, _sInstrument.coupons);
 
         for (uint8 i; i < options.length;) {
-          assertEq(options[i].participationPCT, _sInstrument.options[i].participationPCT);
-          assertEq(options[i].barrierId, _sInstrument.options[i].barrierId);
-          assertEq(options[i].tokenId, _sInstrument.options[i].tokenId);
-          unchecked {
-              ++i;
-          }
+            assertEq(options[i].participationPCT, _sInstrument.options[i].participationPCT);
+            assertEq(options[i].barrierId, _sInstrument.options[i].barrierId);
+            assertEq(options[i].tokenId, _sInstrument.options[i].tokenId);
+            unchecked {
+                ++i;
+            }
         }
     }
 
