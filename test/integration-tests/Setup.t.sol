@@ -154,7 +154,7 @@ contract InstrumentGrappaSetup is Setup {
     }
 
     function _load() internal returns (uint256 id) {
-        instrument.initialSpotPrice = 1;
+        instrument.period = 1;
         instrument.engineId = 1;
         InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
             uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))

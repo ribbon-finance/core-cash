@@ -230,11 +230,11 @@ contract RegisterInstrumentTest is Test {
         uint256 id = grappa.registerInstrument(instrument);
         assertEq(id, instrumentId);
 
-        (uint64 initialSpotPrice, uint8 engineId, uint40 autocallId, uint256 coupons, Option[] memory options) =
+        (uint64 period, uint8 engineId, uint40 autocallId, uint256 coupons, Option[] memory options) =
             grappa.getDetailFromInstrumentId(id);
         Instrument memory _sInstrument = grappa.serialize(instrument);
 
-        assertEq(initialSpotPrice, _sInstrument.initialSpotPrice);
+        assertEq(period, _sInstrument.period);
         assertEq(engineId, _sInstrument.engineId);
         assertEq(autocallId, _sInstrument.autocallId);
         assertEq(coupons, _sInstrument.coupons);
@@ -250,7 +250,7 @@ contract RegisterInstrumentTest is Test {
     }
 
     function _load() internal returns (uint256 id) {
-        instrument.initialSpotPrice = 1;
+        instrument.period = 1;
         instrument.engineId = 1;
         InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
             uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))
