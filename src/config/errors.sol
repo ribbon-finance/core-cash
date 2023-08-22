@@ -14,6 +14,9 @@ error NoAccess();
  *      Grappa Errors       *
  * -----------------------  */
 
+/// @dev instrument already registered
+error GP_InstrumentAlreadyRegistered();
+
 /// @dev asset already registered
 error GP_AssetAlreadyRegistered();
 

@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 
 import {Grappa} from "../../src/core/Grappa.sol";
+import {InstrumentGrappa} from "../../src/core/InstrumentGrappa.sol";
 import {GrappaProxy} from "../../src/core/GrappaProxy.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 import {MockOracle} from "../mocks/MockOracle.sol";
@@ -18,15 +19,15 @@ import "../../src/config/constants.sol";
 /**
  * @dev test on proxy contract
  */
-contract GrappaProxyTest is Test {
+contract ProxyTest is Test {
     Grappa public implementation;
     Grappa public grappa;
-    MockERC20 private weth;
+    MockERC20 internal weth;
 
-    constructor() {
+    constructor(address _implementation) {
         weth = new MockERC20("WETH", "WETH", 18);
 
-        implementation = new Grappa(address(0));
+        implementation = Grappa(_implementation);
         bytes memory data = abi.encodeWithSelector(Grappa.initialize.selector, address(this));
 
         grappa = Grappa(address(new GrappaProxy(address(implementation), data)));
@@ -85,4 +86,12 @@ contract GrappaProxyTest is Test {
         proxy2.initialize(address(0xaa));
         assertEq(proxy2.owner(), address(0xaa));
     }
+}
+
+contract GrappaProxyTest is ProxyTest {
+    constructor() ProxyTest(address(new Grappa(address(0)))) {}
+}
+
+contract InstrumentGrappaProxyTest is ProxyTest {
+    constructor() ProxyTest(address(new InstrumentGrappa(address(0), address(0)))) {}
 }

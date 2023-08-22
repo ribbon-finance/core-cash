@@ -18,24 +18,6 @@ contract TokenIdUtilTest is Test {
         assertGt(id, 0);
     }
 
-    function testBarrierIdHigherThan0(uint16 barrierPCT, uint8 observationFrequency, uint8 triggerType, uint8 exerciseType)
-        public
-    {
-        vm.assume(barrierPCT > 0 || observationFrequency > 0 || triggerType > 0 || exerciseType > 0);
-        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
-        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
-        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
-
-        uint256 id = TokenIdUtil.getBarrierId(
-            barrierPCT,
-            BarrierObservationFrequencyType(observationFrequency),
-            BarrierTriggerType(triggerType),
-            BarrierExerciseType(exerciseType)
-        );
-
-        assertGt(id, 0);
-    }
-
     function testTokenIdFormatAndParseAreMirrored(
         uint8 tokenType,
         uint40 productId,
@@ -77,80 +59,5 @@ contract TokenIdUtilTest is Test {
         assertEq(uint64(expiry), _expiry);
         assertEq(uint64(longStrike), _longStrike);
         assertEq(uint64(shortStrike), _shortStrike);
-    }
-
-    function testReserveFormatAndParseAreMirrored(uint32 leveragePCT, uint32 barrierId) public {
-        uint64 reserve = TokenIdUtil.getReserve(leveragePCT, barrierId);
-        (uint32 _leveragePCT, uint32 _barrierId) = TokenIdUtil.parseReserve(reserve);
-
-        assertEq(leveragePCT, _leveragePCT);
-        assertEq(barrierId, _barrierId);
-    }
-
-    function testReserveGetAndParseAreMirrored(uint256 leveragePCT, uint256 barrierId) public {
-        uint64 reserve = TokenIdUtil.getReserve(uint32(leveragePCT), uint32(barrierId));
-        (uint32 _leveragePCT, uint32 _barrierId) = TokenIdUtil.parseReserve(reserve);
-
-        assertEq(uint32(leveragePCT), _leveragePCT);
-        assertEq(uint32(barrierId), _barrierId);
-    }
-
-    function testBarrierIdFormatAndParseAreMirrored(
-        uint16 barrierPCT,
-        uint8 observationFrequency,
-        uint8 triggerType,
-        uint8 exerciseType
-    ) public {
-        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
-        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
-        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
-
-        uint32 id = TokenIdUtil.getBarrierId(
-            barrierPCT,
-            BarrierObservationFrequencyType(observationFrequency),
-            BarrierTriggerType(triggerType),
-            BarrierExerciseType(exerciseType)
-        );
-
-        (
-            uint16 _barrierPCT,
-            BarrierObservationFrequencyType _observationFrequency,
-            BarrierTriggerType _triggerType,
-            BarrierExerciseType _exerciseType
-        ) = TokenIdUtil.parseBarrierId(id);
-
-        assertEq(barrierPCT, _barrierPCT);
-        assertEq(uint8(observationFrequency), uint8(_observationFrequency));
-        assertEq(uint8(triggerType), uint8(_triggerType));
-        assertEq(uint8(exerciseType), uint8(_exerciseType));
-    }
-
-    function testBarrierIdGetAndParseAreMirrored(
-        uint256 barrierPCT,
-        uint8 observationFrequency,
-        uint8 triggerType,
-        uint8 exerciseType
-    ) public {
-        vm.assume(observationFrequency <= uint8(type(BarrierObservationFrequencyType).max));
-        vm.assume(triggerType <= uint8(type(BarrierTriggerType).max));
-        vm.assume(exerciseType <= uint8(type(BarrierExerciseType).max));
-
-        uint32 id = TokenIdUtil.getBarrierId(
-            uint16(barrierPCT),
-            BarrierObservationFrequencyType(observationFrequency),
-            BarrierTriggerType(triggerType),
-            BarrierExerciseType(exerciseType)
-        );
-        (
-            uint16 _barrierPCT,
-            BarrierObservationFrequencyType _observationFrequency,
-            BarrierTriggerType _triggerType,
-            BarrierExerciseType _exerciseType
-        ) = TokenIdUtil.parseBarrierId(id);
-
-        assertEq(uint16(barrierPCT), _barrierPCT);
-        assertEq(observationFrequency, uint8(_observationFrequency));
-        assertEq(triggerType, uint8(_triggerType));
-        assertEq(exerciseType, uint8(_exerciseType));
     }
 }

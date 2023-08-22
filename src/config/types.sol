@@ -6,14 +6,30 @@ import "./enums.sol";
 /**
  * @dev struct representing an instrument which
  *             is a construction of options and coupons
+ * @param period duration of instrument
+ * @param engineId representing engine id
  * @param autocallId representing the autocall feature if included
  * @param coupons packed uint of all the coupons (64 bits each) in the instrument (4 max)
  * @param options array of all the options in the instrument
  */
 struct Instrument {
+    uint64 period;
+    uint8 engineId;
     uint40 autocallId;
     uint256 coupons;
-    uint256[] options;
+    Option[] options;
+}
+
+/**
+ * @dev struct representing an option and allocation
+ * @param participationPCT participation pct
+ * @param barrierId barrier id
+ * @param tokenId token id
+ */
+struct Option {
+    uint16 participationPCT;
+    uint32 barrierId;
+    uint256 tokenId;
 }
 
 /**
@@ -22,6 +38,22 @@ struct Instrument {
  * @param amount amount the asset
  */
 struct Balance {
+    uint8 collateralId;
+    uint80 amount;
+}
+
+/**
+ * @dev struct representing the balance for a given instrument component
+ * @param isCoupon whether it is coupon (true) or option (false)
+ * @param index index in coupons or options array
+ * @param engineId engine id
+ * @param collateralId grappa asset id
+ * @param amount amount the asset
+ */
+struct InstrumentComponentBalance {
+    bool isCoupon;
+    uint8 index;
+    uint8 engineId;
     uint8 collateralId;
     uint80 amount;
 }

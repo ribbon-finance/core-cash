@@ -5,13 +5,18 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 
 import {Grappa} from "../../src/core/Grappa.sol";
+import {InstrumentGrappa} from "../../src/core/InstrumentGrappa.sol";
 import {GrappaProxy} from "../../src/core/GrappaProxy.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 import {MockOracle} from "../mocks/MockOracle.sol";
+import {InstrumentIdUtil} from "../../src/libraries/InstrumentIdUtil.sol";
 
+import "../../src/config/types.sol";
 import "../../src/config/errors.sol";
 import "../../src/config/enums.sol";
 import "../../src/config/constants.sol";
+
+import "forge-std/console.sol";
 
 /**
  * @dev test grappa register related functions
@@ -145,7 +150,7 @@ contract RegisterEngineTest is Test {
 }
 
 /**
- * @dev test grappa functions around registering engines
+ * @dev test grappa functions around registering oracles
  */
 contract RegisterOracleTest is Test {
     Grappa public grappa;
@@ -191,5 +196,73 @@ contract RegisterOracleTest is Test {
         (address oracle_,,,,,,,) = grappa.getDetailFromProductId(product);
 
         assertEq(oracle_, oracle);
+    }
+}
+
+/**
+ * @dev test grappa functions around registering instruments
+ */
+contract RegisterInstrumentTest is Test {
+    InstrumentGrappa public grappa;
+    address private engine1;
+
+    uint256 internal instrumentId;
+    InstrumentIdUtil.InstrumentExtended internal instrument;
+    uint32 internal barrierId;
+
+    constructor() {
+        engine1 = address(1);
+        address instrumentGrappaImplementation = address(new InstrumentGrappa(address(0), address(0))); // nonce: 5
+
+        bytes memory data = abi.encodeWithSelector(Grappa.initialize.selector, address(this));
+
+        grappa = InstrumentGrappa(address(new GrappaProxy(instrumentGrappaImplementation, data))); // 6
+        instrumentId = _load();
+    }
+
+    function testCannotRegisterSameInstrumentTwice() public {
+        grappa.registerInstrument(instrument);
+        vm.expectRevert(GP_InstrumentAlreadyRegistered.selector);
+        grappa.registerInstrument(instrument);
+    }
+
+    function testRegisterInstrument() public {
+        uint256 id = grappa.registerInstrument(instrument);
+        assertEq(id, instrumentId);
+
+        (uint64 period, uint8 engineId, uint40 autocallId, uint256 coupons, Option[] memory options) =
+            grappa.getDetailFromInstrumentId(id);
+        Instrument memory _sInstrument = grappa.serialize(instrument);
+
+        assertEq(period, _sInstrument.period);
+        assertEq(engineId, _sInstrument.engineId);
+        assertEq(autocallId, _sInstrument.autocallId);
+        assertEq(coupons, _sInstrument.coupons);
+
+        for (uint8 i; i < options.length;) {
+            assertEq(options[i].participationPCT, _sInstrument.options[i].participationPCT);
+            assertEq(options[i].barrierId, _sInstrument.options[i].barrierId);
+            assertEq(options[i].tokenId, _sInstrument.options[i].tokenId);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function _load() internal returns (uint256 id) {
+        instrument.period = 1;
+        instrument.engineId = 1;
+        InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
+            uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))
+        );
+        barrierId = InstrumentIdUtil.getBarrierId(
+            barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType, barrier.exerciseType
+        );
+
+        instrument.autocall = InstrumentIdUtil.Autocall(true, barrier);
+        instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
+        instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
+        // console.log(instrument.options);
+        id = grappa.getInstrumentId(instrument);
     }
 }

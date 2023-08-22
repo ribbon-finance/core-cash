@@ -6,8 +6,8 @@ import "./Setup.t.sol";
 /**
  * @dev test getPayout function on different token types
  */
-contract GrappaSettlementTest is Setup {
-    function setUp() public {
+contract GrappaSettlementTest is GrappaSetup {
+    function setUp() public virtual {
         _setupGrappaTestEnvironment();
     }
 
@@ -181,4 +181,19 @@ contract GrappaSettlementTest is Setup {
         vm.expectRevert(GP_InvalidExpiry.selector);
         engine.mintOptionToken(address(this), tokenId, 1e6);
     }
+}
+
+/**
+ * @dev test getPayout function on different token types
+ */
+contract InstrumentGrappaSettlementTest is GrappaSettlementTest, InstrumentGrappaSetup {
+    function setUp() public override {
+        _setupInstrumentGrappaTestEnvironment();
+    }
+
+    // TODO
+    // settleInstrument()
+    // getOptionPayout()
+    // getCouponPayout()
+    // getInstrumentPayout()
 }
