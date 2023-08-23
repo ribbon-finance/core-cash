@@ -100,7 +100,7 @@ contract ChainlinkOracleDisputable is ChainlinkOracle {
 
     /**
      * @dev overrides _isExpiryPriceFinalized() from ChainlinkOracle to check if dispute period is over
-     *      if true, getPriceAtExpiry will return (price, true)
+     *      if true, getPriceAtTimestamp will return (price, true)
      */
     function _isExpiryPriceFinalized(address _base, address _quote, uint256 _expiry) internal view override returns (bool) {
         ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];

@@ -76,22 +76,22 @@ contract PythOracleDisputable is IOracle, Ownable {
     }
 
     /**
-     * @dev get expiry price of underlying, denominated in strike asset.
-     *         can revert if expiry is in the future, or the price has not been reported by authorized party
+     * @dev get price of underlying at a particular timestamp, denominated in strike asset.
+     *         can revert if expiry is in the future, or the price has not been reported yet
      * @param _base base asset. for ETH/USD price, ETH is the base asset
      * @param _quote quote asset. for ETH/USD price, USD is the quote asset
-     * @param _expiry expiry timestamp
+     * @param _timestamp timestamp to check
      * @return price with 6 decimals
      */
-    function getPriceAtExpiry(address _base, address _quote, uint256 _expiry)
+    function getPriceAtTimestamp(address _base, address _quote, uint256 _timestamp)
         external
         view
         returns (uint256 price, bool isFinalized)
     {
-        ExpiryPrice memory data = expiryPrices[_base][_quote][_expiry];
+        ExpiryPrice memory data = expiryPrices[_base][_quote][_timestamp];
         if (data.reportAt == 0) revert OC_PriceNotReported();
 
-        return (data.price, _isExpiryPriceFinalized(_base, _quote, _expiry));
+        return (data.price, _isExpiryPriceFinalized(_base, _quote, _timestamp));
     }
 
     /**
@@ -150,24 +150,6 @@ contract PythOracleDisputable is IOracle, Ownable {
     }
 
     /**
-     * @dev owner can set a price if the the price has not been pushed for at least 36 hours
-     * @param _base base asset
-     * @param _quote quote asset
-     * @param _expiry expiry timestamp
-     * @param _price price to set
-     */
-    function setExpiryPriceBackup(address _base, address _quote, uint256 _expiry, uint256 _price) external onlyOwner {
-        ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];
-        if (entry.reportAt != 0) revert OC_PriceReported();
-
-        if (_expiry + 36 hours > block.timestamp) revert OC_GracePeriodNotOver();
-
-        expiryPrices[_base][_quote][_expiry] = ExpiryPrice(true, uint64(block.timestamp), _price.safeCastTo128());
-
-        emit ExpiryPriceSet(_base, _quote, _expiry, _price, true);
-    }
-
-    /**
      * @dev set the dispute period for a specific base / quote asset
      * @param _base base asset
      * @param _quote quote asset
@@ -186,8 +168,8 @@ contract PythOracleDisputable is IOracle, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @dev overrides _isExpiryPriceFinalized() from ChainlinkOracle to check if dispute period is over
-     *      if true, getPriceAtExpiry will return (price, true)
+     * @dev checks if dispute period is over
+     *      if true, getPriceAtTimestamp will return (price, true)
      */
     function _isExpiryPriceFinalized(address _base, address _quote, uint256 _expiry) internal view override returns (bool) {
         ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];
@@ -199,7 +181,7 @@ contract PythOracleDisputable is IOracle, Ownable {
     }
 
     /**
-     * @notice  convert prices from aggregator of base & quote asset to base / quote, denominated in UNIT
+     * @notice  convert prices of base & quote asset to base / quote, denominated in UNIT
      * @param _basePrice price of base asset from aggregator
      * @param _quotePrice price of quote asset from aggregator
      * @param _baseDecimals decimals of _basePrice
@@ -223,21 +205,6 @@ contract PythOracleDisputable is IOracle, Ownable {
                 price = _basePrice / (_quotePrice * (10 ** uint8(-baseMulDecimals)));
             }
         }
-    }
-
-    /**
-     * @dev fetch price with their native decimals from Chainlink aggregator
-     */
-    function _getSpotPriceFromAggregator(address _asset) internal view returns (uint256 price, uint8 decimals) {
-        AggregatorData memory aggregator = aggregators[_asset];
-        if (aggregator.addr == address(0)) revert CL_AggregatorNotSet();
-
-        // request answer from Chainlink
-        (, int256 answer,, uint256 updatedAt,) = IAggregatorV3(address(aggregator.addr)).latestRoundData();
-
-        if (block.timestamp - updatedAt > aggregator.maxDelay) revert CL_StaleAnswer();
-
-        return (uint256(answer), aggregator.decimals);
     }
 
     /**

@@ -75,22 +75,22 @@ contract ChainlinkOracle is IOracle, Ownable {
     }
 
     /**
-     * @dev get expiry price of underlying, denominated in strike asset.
+     * @dev get price of underlying at a particular timestamp, denominated in strike asset.
      *         can revert if expiry is in the future, or the price has not been reported by authorized party
      * @param _base base asset. for ETH/USD price, ETH is the base asset
      * @param _quote quote asset. for ETH/USD price, USD is the quote asset
-     * @param _expiry expiry timestamp
+     * @param _timestamp timestamp to check
      * @return price with 6 decimals
      */
-    function getPriceAtExpiry(address _base, address _quote, uint256 _expiry)
+    function getPriceAtTimestamp(address _base, address _quote, uint256 _timestamp)
         external
         view
         returns (uint256 price, bool isFinalized)
     {
-        ExpiryPrice memory data = expiryPrices[_base][_quote][_expiry];
+        ExpiryPrice memory data = expiryPrices[_base][_quote][_timestamp];
         if (data.reportAt == 0) revert OC_PriceNotReported();
 
-        return (data.price, _isExpiryPriceFinalized(_base, _quote, _expiry));
+        return (data.price, _isExpiryPriceFinalized(_base, _quote, _timestamp));
     }
 
     /**

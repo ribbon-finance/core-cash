@@ -515,7 +515,7 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
         view
         returns (uint256)
     {
-        (uint256 price, bool isFinalized) = IOracle(_oracle).getPriceAtExpiry(_base, _quote, _expiry);
+        (uint256 price, bool isFinalized) = IOracle(_oracle).getPriceAtTimestamp(_base, _quote, _expiry);
         if (!isFinalized) revert GP_PriceNotFinalized();
         return price;
     }

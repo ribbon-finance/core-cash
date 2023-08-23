@@ -104,7 +104,7 @@ contract ChainlinkOracleDisputableTest is Test {
         // dispute
         oracle.disputePrice(weth, usdc, expiry, 3000 * UNIT);
 
-        (uint256 price, bool isFinalized) = oracle.getPriceAtExpiry(weth, usdc, expiry);
+        (uint256 price, bool isFinalized) = oracle.getPriceAtTimestamp(weth, usdc, expiry);
 
         assertEq(price, 3000 * UNIT);
         assertEq(isFinalized, true);
@@ -148,7 +148,7 @@ contract ChainlinkOracleDisputableTest is Test {
         vm.warp(expiry + 36 hours);
         // setExpiryPriceBackup
         oracle.setExpiryPriceBackup(weth, usdc, expiry, 3500 * UNIT);
-        (uint256 price, bool isFinalized) = oracle.getPriceAtExpiry(weth, usdc, expiry);
+        (uint256 price, bool isFinalized) = oracle.getPriceAtTimestamp(weth, usdc, expiry);
         assertEq(price, 3500 * UNIT);
         assertEq(isFinalized, true);
     }
