@@ -21,21 +21,14 @@ contract PythOracleDisputable is IOracle, Ownable {
     using FixedPointMathLib for uint256;
     using SafeCastLib for uint256;
 
-    struct ExpiryPrice {
+    struct HistoricalPrice {
         bool isDisputed;
         uint64 reportAt;
         uint128 price;
     }
 
-    struct AggregatorData {
-        address addr;
-        uint8 decimals;
-        uint32 maxDelay;
-        bool isStable; // answer of stable asset can be used as long as the answer is not stale
-    }
-
-    ///@dev base => quote => expiry => price.
-    mapping(address => mapping(address => mapping(uint256 => ExpiryPrice))) public expiryPrices;
+    ///@dev base => quote => timestamp => price.
+    mapping(address => mapping(address => mapping(uint256 => HistoricalPrice))) public historicalPrices;
 
     // base => quote => dispute period
     mapping(address => mapping(address => uint256)) public disputePeriod;
@@ -44,7 +37,7 @@ contract PythOracleDisputable is IOracle, Ownable {
                                  Events
     //////////////////////////////////////////////////////////////*/
 
-    event ExpiryPriceSet(address base, address quote, uint256 expiry, uint256 price, bool isDispute);
+    event HistoricalPriceSet(address base, address quote, uint256 timestamp, uint256 price, bool isDispute);
 
     event DisputePeriodUpdated(address base, address quote, uint256 period);
 
@@ -64,20 +57,8 @@ contract PythOracleDisputable is IOracle, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice  get spot price of _base, denominated in _quote.
-     * @param _base base asset. for ETH/USD price, ETH is the base asset
-     * @param _quote quote asset. for ETH/USD price, USD is the quote asset
-     * @return price with 6 decimals
-     */
-    function getSpotPrice(address _base, address _quote) external view returns (uint256) {
-        (uint256 basePrice, uint8 baseDecimals) = _getSpotPriceFromAggregator(_base);
-        (uint256 quotePrice, uint8 quoteDecimals) = _getSpotPriceFromAggregator(_quote);
-        return _toPriceWithUnitDecimals(basePrice, quotePrice, baseDecimals, quoteDecimals);
-    }
-
-    /**
      * @dev get price of underlying at a particular timestamp, denominated in strike asset.
-     *         can revert if expiry is in the future, or the price has not been reported yet
+     *         can revert if timestamp is in the future, or the price has not been reported yet
      * @param _base base asset. for ETH/USD price, ETH is the base asset
      * @param _quote quote asset. for ETH/USD price, USD is the quote asset
      * @param _timestamp timestamp to check
@@ -88,10 +69,10 @@ contract PythOracleDisputable is IOracle, Ownable {
         view
         returns (uint256 price, bool isFinalized)
     {
-        ExpiryPrice memory data = expiryPrices[_base][_quote][_timestamp];
+        HistoricalPrice memory data = historicalPrices[_base][_quote][_timestamp];
         if (data.reportAt == 0) revert OC_PriceNotReported();
 
-        return (data.price, _isExpiryPriceFinalized(_base, _quote, _timestamp));
+        return (data.price, _isPriceFinalized(_base, _quote, _timestamp));
     }
 
     /**
@@ -104,8 +85,8 @@ contract PythOracleDisputable is IOracle, Ownable {
     /**
      * @dev view function to check if dispute period is over
      */
-    function isExpiryPriceFinalized(address _base, address _quote, uint256 _expiry) external view returns (bool) {
-        return _isExpiryPriceFinalized(_base, _quote, _expiry);
+    function isPriceFinalized(address _base, address _quote, uint256 _timestamp) external view returns (bool) {
+        return _isPriceFinalized(_base, _quote, _timestamp);
     }
 
     /**
@@ -116,15 +97,15 @@ contract PythOracleDisputable is IOracle, Ownable {
         external
     {
         if (_expiry > block.timestamp) revert OC_CannotReportForFuture();
-        if (expiryPrices[_base][_quote][_expiry].reportAt != 0) revert OC_PriceReported();
+        if (historicalPrices[_base][_quote][_expiry].reportAt != 0) revert OC_PriceReported();
 
         (uint256 basePrice, uint8 baseDecimals) = _getLastPriceBeforeExpiry(_base, _baseRoundId, _expiry);
         (uint256 quotePrice, uint8 quoteDecimals) = _getLastPriceBeforeExpiry(_quote, _quoteRoundId, _expiry);
         uint256 price = _toPriceWithUnitDecimals(basePrice, quotePrice, baseDecimals, quoteDecimals);
 
-        expiryPrices[_base][_quote][_expiry] = ExpiryPrice(false, uint64(block.timestamp), price.safeCastTo128());
+        historicalPrices[_base][_quote][_expiry] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
 
-        emit ExpiryPriceSet(_base, _quote, _expiry, price, false);
+        emit HistoricalPriceSet(_base, _quote, _expiry, price, false);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -139,14 +120,14 @@ contract PythOracleDisputable is IOracle, Ownable {
      * @param _newPrice new price to set
      */
     function disputePrice(address _base, address _quote, uint256 _expiry, uint256 _newPrice) external onlyOwner {
-        ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];
+        HistoricalPrice memory entry = historicalPrices[_base][_quote][_expiry];
         if (entry.reportAt == 0) revert OC_PriceNotReported();
 
         if (entry.reportAt + disputePeriod[_base][_quote] < block.timestamp) revert OC_DisputePeriodOver();
 
-        expiryPrices[_base][_quote][_expiry] = ExpiryPrice(true, uint64(block.timestamp), _newPrice.safeCastTo128());
+        historicalPrices[_base][_quote][_expiry] = HistoricalPrice(true, uint64(block.timestamp), _newPrice.safeCastTo128());
 
-        emit ExpiryPriceSet(_base, _quote, _expiry, _newPrice, true);
+        emit HistoricalPriceSet(_base, _quote, _expiry, _newPrice, true);
     }
 
     /**
@@ -171,8 +152,8 @@ contract PythOracleDisputable is IOracle, Ownable {
      * @dev checks if dispute period is over
      *      if true, getPriceAtTimestamp will return (price, true)
      */
-    function _isExpiryPriceFinalized(address _base, address _quote, uint256 _expiry) internal view override returns (bool) {
-        ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];
+    function _isPriceFinalized(address _base, address _quote, uint256 _expiry) internal view override returns (bool) {
+        HistoricalPrice memory entry = historicalPrices[_base][_quote][_expiry];
         if (entry.reportAt == 0) return false;
 
         if (entry.isDisputed) return true;
@@ -205,34 +186,5 @@ contract PythOracleDisputable is IOracle, Ownable {
                 price = _basePrice / (_quotePrice * (10 ** uint8(-baseMulDecimals)));
             }
         }
-    }
-
-    /**
-     * @notice get the price from an roundId, and make sure it is the last price before expiry
-     * @param _asset asset to report
-     * @param _roundId chainlink roundId that should be used
-     * @param _expiry expiry timestamp to report
-     */
-    function _getLastPriceBeforeExpiry(address _asset, uint80 _roundId, uint256 _expiry)
-        internal
-        view
-        returns (uint256 price, uint8 decimals)
-    {
-        AggregatorData memory aggregator = aggregators[_asset];
-        if (aggregator.addr == address(0)) revert CL_AggregatorNotSet();
-
-        // request answer from Chainlink
-        (, int256 answer,, uint256 updatedAt,) = IAggregatorV3(address(aggregator.addr)).getRoundData(_roundId);
-
-        // if expiry < updatedAt, this line will revert
-        if (_expiry - updatedAt > aggregator.maxDelay) revert CL_StaleAnswer();
-
-        // it is not a stable asset: make sure timestamp of answer #(round + 1) is higher than expiry
-        if (!aggregator.isStable) {
-            (,,, uint256 nextRoundUpdatedAt,) = IAggregatorV3(address(aggregator.addr)).getRoundData(_roundId + 1);
-            if (nextRoundUpdatedAt <= _expiry) revert CL_RoundIdTooSmall();
-        }
-
-        return (uint256(answer), aggregator.decimals);
     }
 }

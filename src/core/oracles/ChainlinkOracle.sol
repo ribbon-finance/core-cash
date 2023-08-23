@@ -76,7 +76,7 @@ contract ChainlinkOracle is IOracle, Ownable {
 
     /**
      * @dev get price of underlying at a particular timestamp, denominated in strike asset.
-     *         can revert if expiry is in the future, or the price has not been reported by authorized party
+     *         can revert if timestamp is in the future, or the price has not been reported by authorized party
      * @param _base base asset. for ETH/USD price, ETH is the base asset
      * @param _quote quote asset. for ETH/USD price, USD is the quote asset
      * @param _timestamp timestamp to check
