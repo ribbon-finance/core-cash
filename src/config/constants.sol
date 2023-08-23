@@ -14,7 +14,7 @@ int256 constant sUNIT = int256(10 ** 6);
 uint256 constant BPS = 10000;
 
 ///@dev maximum dispute period for oracle
-uint256 constant MAX_DISPUTE_PERIOD = 6 hours;
+uint256 constant MAX_DISPUTE_PERIOD = 365 days;
 
 ///@dev maximum amount of options in an instrument
 uint8 constant MAX_OPTION_CONSTRUCTION = 4;
