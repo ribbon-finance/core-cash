@@ -1,13 +1,14 @@
 {
-  "name": "@grappafinance/grappa-contracts",
+  "name": "@ribbon-finance/grappa",
   "author": "antoncoding",
+  "contributors": ["chudnov", "spablob", "Sahilgat"],
   "version": "1.2.0",
   "description": "option protocol built with forge template",
-  "homepage": "https://github.com/grappafinance/core",
+  "homepage": "https://github.com/ribbon-finance/core-cash",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:grappafinance/core.git"
+    "url": "git+ssh://git@github.com/ribbon-finance/core-cash.git"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.0.0",
@@ -17,5 +18,17 @@
   },
   "dependencies": {
     "slither.io": "^0.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/ribbon-finance/core-cash/issues"
+  },
+  "main": "commitlint.config.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
