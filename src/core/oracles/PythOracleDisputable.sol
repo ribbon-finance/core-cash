@@ -33,6 +33,8 @@ contract PythOracleDisputable is IOracle, Ownable {
     }
 
     // asset => timestamp => price.
+    // NOTE: You should not access this mapping directly to get prices. Instead, use the getPriceAtTimestamp method to handle stable asset cases.
+    // TODO check if we should just make it private
     mapping(address => mapping(uint256 => HistoricalPrice)) public historicalPrices;
 
     // asset => dispute period
@@ -40,6 +42,8 @@ contract PythOracleDisputable is IOracle, Ownable {
 
     // pyth price feed IDs (https://pyth.network/developers/price-feed-ids) => asset
     mapping(bytes32 => address) public priceFeedIds;
+
+    mapping(address => bool) public stableAssets
 
     /*///////////////////////////////////////////////////////////////
                                  Events
@@ -52,6 +56,8 @@ contract PythOracleDisputable is IOracle, Ownable {
     event PriceFeedIDUpdated(bytes32 id, address asset);
 
     event PythUpdated(address newPyth);
+
+    event StableAssetUpdated(address asset, bool isStableAsset);
 
     /*///////////////////////////////////////////////////////////////
                                 Constructor
@@ -73,21 +79,30 @@ contract PythOracleDisputable is IOracle, Ownable {
     /**
      * @dev get price of underlying at a particular timestamp, denominated in strike asset.
      *         can revert if timestamp is in the future, or the price has not been reported yet
-     * @param _base base asset. for ETH/USD price, ETH is the base asset
-     * @param _quote quote asset. for ETH/USD price, USD is the quote asset
+     * @param _base base asset. for ETH/USDC price, ETH is the base asset
+     * @param _quote quote asset. for ETH/USDC price, USDC is the quote asset
      * @param _timestamp timestamp to check
-     * @return price with 6 decimals
+     * @return price with {UNIT_DECIMALS} decimals
+     * @return isFinalized bool checking if dispute period is over
      */
     function getPriceAtTimestamp(address _base, address _quote, uint256 _timestamp)
         external
         view
         returns (uint256 price, bool isFinalized)
     {
-        // TODO need to do internal conversion from base to quote
-        // HistoricalPrice memory data = historicalPrices[_base][_quote][_timestamp];
-        // if (data.reportAt == 0) revert OC_PriceNotReported();
-
-        // return (data.price, _isPriceFinalized(_base, _quote, _timestamp));
+        if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
+        HistoricalPrice memory baseData = historicalPrices[_base][_timestamp];
+        bool isBasePriceFinalized = _isPriceFinalized(_base, _timestamp);
+        if (baseData.reportAt == 0) revert OC_PriceNotReported();
+        if (stableAssets[_quote] == true) {
+            return (baseData.price, isBasePriceFinalized);
+        } else {
+            HistoricalPrice memory quoteData = historicalPrices[_quote][_timestamp];
+            if (quoteData.reportAt == 0) revert OC_PriceNotReported();
+            uint256 convertedPrice = _toPriceWithUnitDecimals(baseData.price, quoteData.price, UNIT_DECIMALS, UNIT_DECIMALS)
+            bool isPriceFinalized = _isPriceFinalized(_quote, _timestamp) && isBasePriceFinalized;
+            return (convertedPrice, isPriceFinalized);
+        }
     }
 
     /**
@@ -106,23 +121,34 @@ contract PythOracleDisputable is IOracle, Ownable {
 
     /**
      * @notice report pyth price at a timestamp and write to storage
+     * @notice Since pyth price feeds are USD denominated, stored prices are always coverted to {UNIT_DECIMALS} decimals
      * @dev anyone can call this function and set the price for a given timestamp
      */
     function reportPrice(bytes[] calldata _pythUpdateData, bytes32[] calldata priceIds, uint256 _timestamp)
         external payable
     {
         if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
-        if (historicalPrices[_base][_quote][_timestamp].reportAt != 0) revert OC_PriceReported();
         uint updateFee = pyth.getUpdateFee(_pythUpdateData);
         PythStructs.PriceFeed[] memory priceFeeds = pyth.parsePriceFeedUpdates{value: updateFee}(_pythUpdateData, priceIds, _timestamp);
+        for (uint i = 0; i < priceFeeds.length; i++) {
+            bytes32 id = priceFeeds[i].id;
+            address asset = priceFeedIds[id];
+            if (asset == address(0)) revert PY_AssetPriceFeedNotSet();
+            int64 basePrice = priceFeeds[i].price.price;
+            int32 baseExpo = priceFeeds[i].price.expo;
+            uint publishTime = priceFeeds[i].price.publishTime;
+            if (publishTime != _timestamp) revert PY_DifferentPublishProvidedTimestamps();
+            if (historicalPrices[asset][_timestamp].reportAt != 0) revert OC_PriceReported();
+            // TODO convert the baseExpo to uint8, and handle both the negative and positve exponent cases
+            // TODO double check _toPriceWithUnitDecimals and it's other usage in getPriceAtTimestamp. Does it convert the decimals accurately?
+            // TODO main concern is if parameter is decimals of the provided input price, or decimals of the expected output price
+            // TODO based on the function name very likely the former and you're using it right
+            uint256 price = _toPriceWithUnitDecimals(basePrice, UNIT, baseDecimals, UNIT_DECIMALS);
+            // TODO check if this case is necessary and safe
+            historicalPrices[asset][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
 
-        (uint256 basePrice, uint8 baseDecimals) = _getLastPriceBeforeExpiry(_base, _baseRoundId, _timestamp);
-        (uint256 quotePrice, uint8 quoteDecimals) = _getLastPriceBeforeExpiry(_quote, _quoteRoundId, _timestamp);
-        uint256 price = _toPriceWithUnitDecimals(basePrice, quotePrice, baseDecimals, quoteDecimals);
-
-        historicalPrices[_base][_quote][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
-
-        emit HistoricalPriceSet(_base, _quote, _timestamp, price, false);
+            emit HistoricalPriceSet(_asset, _timestamp, price, false);
+        }
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -136,7 +162,7 @@ contract PythOracleDisputable is IOracle, Ownable {
      * @param _newPrice new price to set
      */
     function disputePrice(address _asset, uint256 _timestamp, uint256 _newPrice) external onlyOwner {
-        // TODO can't dispute stable asset price
+        if (stableAssets[_asset] == true) revert PY_CannotDisputeStableAsset();
         HistoricalPrice memory entry = historicalPrices[_asset][_timestamp];
         if (entry.reportAt == 0) revert OC_PriceNotReported();
 
@@ -162,12 +188,12 @@ contract PythOracleDisputable is IOracle, Ownable {
 
     /**
      * @dev set the pyth price feed ID for an asset
-     * @param _asset the address of the asset
      * @param _id the bytes 32 ID of the price feed
+     * @param _asset the address of the asset
      */
-    function setPriceFeedID(address _asset, bytes32 _id) external onlyOwner {
-        if (_asset == address(0)) revert OC_ZeroAddress();
+    function setPriceFeedID(bytes32 _id, address _asset) external onlyOwner {
         if (_id == bytes32(0)) revert PY_InvalidPriceFeedID();
+        if (_asset == address(0)) revert OC_ZeroAddress();
 
         bytes32 currentAsset = priceFeedIds[_id];
         if (currentAsset == _asset) revert OC_ValueUnchanged();
@@ -187,6 +213,19 @@ contract PythOracleDisputable is IOracle, Ownable {
         emit PythUpdated(_pyth);
     }
 
+    /**
+     * @dev sets a stable asset for this oracle
+     * @param _asset the address of the asset
+     * @param _isStableAsset boolean of if the asset is a stable asset
+     */
+    function setStableAsset(address _asset, bool _isStableAsset) external onlyOwner {
+        if (_asset == address(0)) revert OC_ZeroAddress();
+        bool currentIsStableAsset = stableAssets[_asset];
+        if (currentIsStableAsset == _isStableAsset) revert OC_ValueUnchanged();
+        stableAssets[_asset] = _isStableAsset;
+        emit StableAssetUpdated(_asset, _isStableAsset);
+    }
+
     /*///////////////////////////////////////////////////////////////
                             Internal functions
     //////////////////////////////////////////////////////////////*/
@@ -196,7 +235,7 @@ contract PythOracleDisputable is IOracle, Ownable {
      *      if true, getPriceAtTimestamp will return (price, true)
      */
     function _isPriceFinalized(address _asset, uint256 _timestamp) internal view override returns (bool) {
-        // TODO if stable asset always return true
+        if (stableAssets[_asset] == true) return true;
         HistoricalPrice memory entry = historicalPrices[_asset][_timestamp];
         if (entry.reportAt == 0) return false;
 

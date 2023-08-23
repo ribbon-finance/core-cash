@@ -33,4 +33,10 @@ error CL_RoundIdTooSmall();
 
 // Pyth oracle
 
-error PY_InvalidPriceFeedID()
+error PY_InvalidPriceFeedID();
+
+error PY_CannotDisputeStableAsset();
+
+error PY_DifferentPublishProvidedTimestamps();
+
+error PY_AssetPriceFeedNotSet();
