@@ -21,17 +21,22 @@ contract PythOracleDisputable is IOracle, Ownable {
     using FixedPointMathLib for uint256;
     using SafeCastLib for uint256;
 
+    IPyth pyth;
+
     struct HistoricalPrice {
         bool isDisputed;
         uint64 reportAt;
         uint128 price;
     }
 
-    ///@dev base => quote => timestamp => price.
+    // base => quote => timestamp => price.
     mapping(address => mapping(address => mapping(uint256 => HistoricalPrice))) public historicalPrices;
 
     // base => quote => dispute period
     mapping(address => mapping(address => uint256)) public disputePeriod;
+
+    // asset => pyth price feed IDs (https://pyth.network/developers/price-feed-ids)
+    mapping(address => bytes32) public priceFeedIds;
 
     /*///////////////////////////////////////////////////////////////
                                  Events
@@ -40,6 +45,8 @@ contract PythOracleDisputable is IOracle, Ownable {
     event HistoricalPriceSet(address base, address quote, uint256 timestamp, uint256 price, bool isDispute);
 
     event DisputePeriodUpdated(address base, address quote, uint256 period);
+
+    event PriceFeedIDUpdated(address asset, bytes32 id);
 
     /*///////////////////////////////////////////////////////////////
                                 Constructor
@@ -90,22 +97,22 @@ contract PythOracleDisputable is IOracle, Ownable {
     }
 
     /**
-     * @notice report expiry price and write to storage
-     * @dev anyone can call this function and freeze the expiry price
+     * @notice report pyth price at a timestamp and write to storage
+     * @dev anyone can call this function and set the price for a given timestamp
      */
-    function reportExpiryPrice(address _base, address _quote, uint256 _expiry, uint80 _baseRoundId, uint80 _quoteRoundId)
+    function reportPrice(address _base, address _quote, uint256 _timestamp, bytes[] calldata pythUpdateData)
         external
     {
-        if (_expiry > block.timestamp) revert OC_CannotReportForFuture();
-        if (historicalPrices[_base][_quote][_expiry].reportAt != 0) revert OC_PriceReported();
+        if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
+        if (historicalPrices[_base][_quote][_timestamp].reportAt != 0) revert OC_PriceReported();
 
-        (uint256 basePrice, uint8 baseDecimals) = _getLastPriceBeforeExpiry(_base, _baseRoundId, _expiry);
-        (uint256 quotePrice, uint8 quoteDecimals) = _getLastPriceBeforeExpiry(_quote, _quoteRoundId, _expiry);
+        (uint256 basePrice, uint8 baseDecimals) = _getLastPriceBeforeExpiry(_base, _baseRoundId, _timestamp);
+        (uint256 quotePrice, uint8 quoteDecimals) = _getLastPriceBeforeExpiry(_quote, _quoteRoundId, _timestamp);
         uint256 price = _toPriceWithUnitDecimals(basePrice, quotePrice, baseDecimals, quoteDecimals);
 
-        historicalPrices[_base][_quote][_expiry] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
+        historicalPrices[_base][_quote][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
 
-        emit HistoricalPriceSet(_base, _quote, _expiry, price, false);
+        emit HistoricalPriceSet(_base, _quote, _timestamp, price, false);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -113,21 +120,21 @@ contract PythOracleDisputable is IOracle, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @dev dispute an reported expiry price from the owner. Cannot dispute an un-reported price
+     * @dev dispute a reported price from the owner. Cannot dispute an un-reported price
      * @param _base base asset
      * @param _quote quote asset
-     * @param _expiry expiry timestamp
+     * @param _timestamp timestamp
      * @param _newPrice new price to set
      */
-    function disputePrice(address _base, address _quote, uint256 _expiry, uint256 _newPrice) external onlyOwner {
-        HistoricalPrice memory entry = historicalPrices[_base][_quote][_expiry];
+    function disputePrice(address _base, address _quote, uint256 _timestamp, uint256 _newPrice) external onlyOwner {
+        HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
         if (entry.reportAt == 0) revert OC_PriceNotReported();
 
         if (entry.reportAt + disputePeriod[_base][_quote] < block.timestamp) revert OC_DisputePeriodOver();
 
-        historicalPrices[_base][_quote][_expiry] = HistoricalPrice(true, uint64(block.timestamp), _newPrice.safeCastTo128());
+        historicalPrices[_base][_quote][_timestamp] = HistoricalPrice(true, uint64(block.timestamp), _newPrice.safeCastTo128());
 
-        emit HistoricalPriceSet(_base, _quote, _expiry, _newPrice, true);
+        emit HistoricalPriceSet(_base, _quote, _timestamp, _newPrice, true);
     }
 
     /**
@@ -144,6 +151,17 @@ contract PythOracleDisputable is IOracle, Ownable {
         emit DisputePeriodUpdated(_base, _quote, _period);
     }
 
+    /**
+     * @dev set the pyth price feed ID for an asset
+     * @param _asset asset
+     * @param _id price feed id
+     */
+    function setPriceFeedID(address _asset, bytes32 _id) external onlyOwner {
+        priceFeedIds[_asset] = _id;
+
+        emit PriceFeedIDUpdated(_asset, _id);
+    }
+
     /*///////////////////////////////////////////////////////////////
                             Internal functions
     //////////////////////////////////////////////////////////////*/
@@ -152,8 +170,8 @@ contract PythOracleDisputable is IOracle, Ownable {
      * @dev checks if dispute period is over
      *      if true, getPriceAtTimestamp will return (price, true)
      */
-    function _isPriceFinalized(address _base, address _quote, uint256 _expiry) internal view override returns (bool) {
-        HistoricalPrice memory entry = historicalPrices[_base][_quote][_expiry];
+    function _isPriceFinalized(address _base, address _quote, uint256 _timestamp) internal view override returns (bool) {
+        HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
         if (entry.reportAt == 0) return false;
 
         if (entry.isDisputed) return true;
