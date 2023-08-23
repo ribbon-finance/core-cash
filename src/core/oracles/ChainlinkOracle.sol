@@ -53,7 +53,7 @@ contract ChainlinkOracle is IOracle, Ownable {
 
     constructor(address _owner) {
         // solhint-disable-next-line reason-string
-        if (_owner == address(0)) revert();
+        if (_owner == address(0)) revert OC_ZeroAddress();
 
         _transferOwnership(_owner);
     }

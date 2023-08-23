@@ -7,6 +7,10 @@ error OC_PriceNotReported();
 
 error OC_PriceReported();
 
+error OC_ZeroAddress();
+
+error OC_ValueUnchanged();
+
 ///@dev cannot dispute the settlement price after dispute period is over
 error OC_DisputePeriodOver();
 
@@ -26,3 +30,7 @@ error CL_AggregatorNotSet();
 error CL_StaleAnswer();
 
 error CL_RoundIdTooSmall();
+
+// Pyth oracle
+
+error PY_InvalidPriceFeedID()

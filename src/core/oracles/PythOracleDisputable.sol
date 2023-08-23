@@ -21,7 +21,7 @@ contract PythOracleDisputable is IOracle, Ownable {
     using FixedPointMathLib for uint256;
     using SafeCastLib for uint256;
 
-    IPyth pyth;
+    IPyth public pyth;
 
     struct HistoricalPrice {
         bool isDisputed;
@@ -48,13 +48,17 @@ contract PythOracleDisputable is IOracle, Ownable {
 
     event PriceFeedIDUpdated(address asset, bytes32 id);
 
+    event PythUpdated(address newPyth);
+
     /*///////////////////////////////////////////////////////////////
                                 Constructor
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner) {
+    constructor(address _owner, address _pyth) {
         // solhint-disable-next-line reason-string
-        if (_owner == address(0)) revert();
+        if (_owner == address(0)) revert OC_ZeroAddress();
+        if (_pyth == address(0)) revert OC_ZeroAddress();
+        pyth = IPyth(_pyth);
 
         _transferOwnership(_owner);
     }
@@ -153,13 +157,29 @@ contract PythOracleDisputable is IOracle, Ownable {
 
     /**
      * @dev set the pyth price feed ID for an asset
-     * @param _asset asset
-     * @param _id price feed id
+     * @param _asset the address of the asset
+     * @param _id the bytes 32 ID of the price feed
      */
     function setPriceFeedID(address _asset, bytes32 _id) external onlyOwner {
+        if (_asset == address(0)) revert OC_ZeroAddress();
+        if (_id == bytes32(0)) revert PY_InvalidPriceFeedID();
+
+        bytes32 currentID = priceFeedIds[_asset];
+        if (currentID == _id) revert OC_ValueUnchanged();
+
         priceFeedIds[_asset] = _id;
 
         emit PriceFeedIDUpdated(_asset, _id);
+    }
+
+    /**
+     * @dev set the pyth contract for this oracle
+     * @param _pyth the address of the pyth contract
+     */
+    function setPyth(address _pyth) external onlyOwner {
+        if (_pyth == address(0)) revert OC_ZeroAddress();
+        pyth = IPyth(_pyth);
+        emit PythUpdated(_pyth);
     }
 
     /*///////////////////////////////////////////////////////////////
