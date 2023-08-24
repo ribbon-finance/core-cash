@@ -40,3 +40,7 @@ error PY_CannotDisputeStableAsset();
 error PY_DifferentPublishProvidedTimestamps();
 
 error PY_AssetPriceFeedNotSet();
+
+// Instrument oracle
+
+error IO_AmericanBarrierNotBreached();
