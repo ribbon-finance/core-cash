@@ -41,6 +41,10 @@ error PY_DifferentPublishProvidedTimestamps();
 
 error PY_AssetPriceFeedNotSet();
 
+error PY_NegativeBasePrice();
+
+error PY_ExpoOutOfRange();
+
 // Instrument oracle
 
 error IO_AmericanBarrierNotBreached();

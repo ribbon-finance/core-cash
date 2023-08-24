@@ -23,7 +23,7 @@ abstract contract InstrumentOracle {
     }
 
     /**
-     * ewf
+     * Updates the breach timestamp of an american barrier 
      * @param _instrumentId Grappa intrumentId
      * @param _barrierId Grappa barrierId
      * @param _timestamp The timestamp at which the breach occured. The price of the underlyer and strike asset at the provided timestamp should be used to verify.
