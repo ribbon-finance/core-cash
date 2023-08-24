@@ -16,7 +16,6 @@
     "husky": "^8.0.1"
   },
   "dependencies": {
-    "@pythnetwork/pyth-sdk-solidity": "^2.2.1",
     "slither.io": "^0.0.0"
   }
 }
