@@ -194,9 +194,9 @@ contract PythOracleDisputable is IOracle, InstrumentOracle, Ownable {
             emit AmericanBarrierUpdated(_instrumentId, _barrierId, _timestamp);
             return;
         }
-        (uint16 barrierPCT, BarrierExerciseType exerciseType, uint64 period, uint64 expiry, address underlying, address strike) = _getBarrierInformation(_instrumentId, _barrierId);
+        (uint16 barrierPCT, , uint64 period, uint64 expiry, address underlying, address strike) = _getBarrierInformation(_instrumentId, _barrierId);
         (uint256 price, ) = _getPriceAtTimestamp(underlying, strike, _timestamp);
-        (uint256 spotPriceAtCreation, bool isSpotPriceAtCreationFinalized) = _getPriceAtTimestamp(underlying, strike, expiry - period);
+        (uint256 spotPriceAtCreation,) = _getPriceAtTimestamp(underlying, strike, expiry - period);
         if (spotPriceAtCreation == 0) revert OC_PriceNotReported();
         // TODO is there a better way to do the rounding? This rounding favours one case over another but should cancel out on the whole?
         uint256 barrierBreachPrice = spotPriceAtCreation.mulDivUp(barrierPCT, 100);
@@ -352,7 +352,6 @@ contract PythOracleDisputable is IOracle, InstrumentOracle, Ownable {
     }
 
     function _compareBarrierPrices(uint256 _barrierBreachPrice, uint256 _comparisonPrice, uint16 _barrierPCT) internal pure returns (bool isBreached) {
-        bool europeanBarrierBreached;
         if (_barrierPCT < 100) {
             return _comparisonPrice < _barrierBreachPrice;
         } else {

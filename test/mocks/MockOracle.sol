@@ -18,7 +18,7 @@ contract MockOracle is IOracle {
         return disputePeriod;
     }
 
-    function getSpotPrice(address _underlying, address /*_strike*/ ) external view override returns (uint256) {
+    function getSpotPrice(address _underlying, address /*_strike*/ ) external view returns (uint256) {
         return spotPrice[_underlying];
     }
 
