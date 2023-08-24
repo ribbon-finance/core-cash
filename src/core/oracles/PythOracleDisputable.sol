@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
-import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import "pyth-sdk-solidity/IPyth.sol";
+import "pyth-sdk-solidity/PythStructs.sol";
 
 import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
