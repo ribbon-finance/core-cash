@@ -60,7 +60,7 @@ abstract contract DisputableOracle is BaseOracle {
      * @param _timestamp timestamp
      * @param _price price to set
      */
-    function setExpiryPriceBackup(address _base, address _quote, uint256 _timestamp, uint256 _price) external onlyOwner {
+    function setPriceBackup(address _base, address _quote, uint256 _timestamp, uint256 _price) external onlyOwner {
         HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
         if (entry.reportAt != 0) revert OC_PriceReported();
 
