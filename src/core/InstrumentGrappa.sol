@@ -126,7 +126,7 @@ contract InstrumentGrappa is Grappa {
 
     function getInitialSpotPrice(uint256 _instrumentId) public view returns (uint256 price) {
         (uint64 period,,,, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
-        (, uint40 productId, uint64 expiry,, ) = TokenIdUtil.parseTokenId(options[0].tokenId);
+        (, uint40 productId, uint64 expiry,,) = TokenIdUtil.parseTokenId(options[0].tokenId);
         (address oracle,, address underlying,, address strike,,,) = getDetailFromProductId(productId);
         return _getOraclePrice(oracle, underlying, strike, expiry - period);
     }
@@ -270,7 +270,7 @@ contract InstrumentGrappa is Grappa {
     function isBarrierBreached(uint256 _instrumentId, uint32 _barrierId) public view returns (uint256 breachTimestamp) {
         (uint16 barrierPCT,,, BarrierExerciseType exerciseType) = InstrumentIdUtil.parseBarrierId(_barrierId);
         (uint64 period,,,, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
-        (, uint40 productId, uint64 expiry,, ) = TokenIdUtil.parseTokenId(options[0].tokenId);
+        (, uint40 productId, uint64 expiry,,) = TokenIdUtil.parseTokenId(options[0].tokenId);
         (address oracle,, address underlying,, address strike,,,) = getDetailFromProductId(productId);
         uint256 spotPriceAtCreation = _getOraclePrice(oracle, underlying, strike, expiry - period);
         // By rounding up below, we end up favouring certain barriers over others
@@ -490,7 +490,11 @@ contract InstrumentGrappa is Grappa {
         return _payouts;
     }
 
-    function _comparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT) internal pure returns (bool isBreached) {
+    function _comparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
+        internal
+        pure
+        returns (bool isBreached)
+    {
         if (_barrierPCT < UNIT_PERCENTAGE) {
             return _comparisonPrice < _barrierBreachThreshold;
         } else {

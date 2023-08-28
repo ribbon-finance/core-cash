@@ -105,9 +105,7 @@ contract ChainlinkOracle is IOracle, Ownable {
      * @notice report price and write to storage
      * @dev anyone can call this function and freeze the price for a timestamp
      */
-    function reportPrice(address _base, address _quote, uint256 _timestamp, uint80 _baseRoundId, uint80 _quoteRoundId)
-        external
-    {
+    function reportPrice(address _base, address _quote, uint256 _timestamp, uint80 _baseRoundId, uint80 _quoteRoundId) external {
         if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
         if (historicalPrices[_base][_quote][_timestamp].reportAt != 0) revert OC_PriceReported();
 

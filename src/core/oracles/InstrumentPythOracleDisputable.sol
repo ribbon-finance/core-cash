@@ -35,7 +35,7 @@ contract InstrumentPythOracleDisputable is PythOracleDisputable, InstrumentOracl
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * Updates the breach timestamp of a barrier 
+     * Updates the breach timestamp of a barrier
      * @param _instrumentId Grappa intrumentId
      * @param _barrierId Grappa barrierId
      * @param _timestamp The timestamp at which an update occurs. This could be a barrier breach, or just a general observation.

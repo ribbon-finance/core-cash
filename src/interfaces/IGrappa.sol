@@ -21,13 +21,7 @@ interface IGrappa {
     function getDetailFromTokenId(uint256 _tokenId)
         external
         pure
-        returns (
-            TokenType tokenType,
-            uint40 productId,
-            uint64 expiry,
-            uint64 longStrike,
-            uint64 shortStrike
-        );
+        returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 shortStrike);
 
     function checkEngineAccess(uint256 _tokenId, address _engine) external view;
 
