@@ -10,24 +10,21 @@ import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
 
 // interfaces
 import {IOracle} from "../../interfaces/IOracle.sol";
-import {InstrumentOracle} from "./abstract/InstrumentOracle.sol";
-import {IInstrumentGrappa} from "../../interfaces/IInstrumentGrappa.sol";
 
 // constants and types
 import "./errors.sol";
-import "../../config/enums.sol";
-import "../../config/types.sol";
 import "../../config/constants.sol";
 
 /**
  * @title PythOracle
  * @dev return base / quote price, with 6 decimals
  */
-contract PythOracle is IOracle, InstrumentOracle, Ownable {
+contract PythOracle is IOracle, Ownable {
     using FixedPointMathLib for uint256;
     using SafeCastLib for uint256;
 
-    IPyth public pyth;
+    /// @notice 0x4305FB66699C3B2702D4d05CF36551390A4c69C6. https://docs.pyth.network/documentation/pythnet-price-feeds/evm.
+    IPyth public immutable pyth;
 
     struct HistoricalPrice {
         bool isDisputed;
@@ -61,7 +58,7 @@ contract PythOracle is IOracle, InstrumentOracle, Ownable {
                                 Constructor
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, address _pyth, address _instrumentGrappaAddress) InstrumentOracle(_instrumentGrappaAddress) {
+    constructor(address _owner, address _pyth) {
         // solhint-disable-next-line reason-string
         if (_owner == address(0)) revert OC_ZeroAddress();
         if (_pyth == address(0)) revert OC_ZeroAddress();
@@ -99,15 +96,6 @@ contract PythOracle is IOracle, InstrumentOracle, Ownable {
         return 0;
     }
 
-    function isBarrierBreached(uint256 _instrumentId, uint32 _barrierId) external override view returns (bool isBreached, bool isFinalized) {
-        (uint16 barrierPCT, BarrierExerciseType exerciseType, uint64 period, uint64 expiry, address underlying, address strike) = _getBarrierInformation(_instrumentId, _barrierId);
-        if (exerciseType == BarrierExerciseType.EUROPEAN) {
-            return _isEuropeanBarrierBreached(expiry, period, barrierPCT, underlying, strike);
-        } else {
-            return _isAmericanBarrierBreached(_instrumentId, _barrierId, underlying, strike);
-        }
-    }
-
     /**
      * @notice report pyth price at a timestamp and write to storage
      * @notice Since pyth price feeds are USD denominated, stored prices are always coverted to {UNIT_DECIMALS} decimals
@@ -138,7 +126,6 @@ contract PythOracle is IOracle, InstrumentOracle, Ownable {
             uint publishTime = priceFeeds[i].price.publishTime;
             if (publishTime != _timestamp) revert PY_DifferentPublishProvidedTimestamps();
             if (historicalPrices[asset][_timestamp].reportAt != 0) revert OC_PriceReported();
-            // TODO convert the baseExpo to uint8, and handle both the negative and positive exponent cases
             uint256 price = _toPriceWithUnitDecimals(positiveBasePrice, UNIT, decimals, UNIT_DECIMALS);
             historicalPrices[asset][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
             emit HistoricalPriceSet(asset, _timestamp, price, false);
@@ -148,33 +135,6 @@ contract PythOracle is IOracle, InstrumentOracle, Ownable {
     /*///////////////////////////////////////////////////////////////
                             Privileged Functions
     //////////////////////////////////////////////////////////////*/
-
-    /**
-     * Updates the breach timestamp of an american barrier 
-     * @param _instrumentId Grappa intrumentId
-     * @param _barrierId Grappa barrierId
-     * @param _timestamp The timestamp at which the breach occured. The price of the underlyer and strike asset at the provided timestamp should be used to verify.
-     */
-    function updateAmericanBarrier(uint256 _instrumentId, uint32 _barrierId, uint256 _timestamp) external override onlyOwner {
-        if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
-        if (_timestamp == 0) {
-            // By default we only update barriers on a breach (timestamp 0 to timestamp !0)
-            // So this special case means we're overwritting the breach and setting the barrier to be unbreached
-            americanBarrierBreaches[_instrumentId][_barrierId] = _timestamp;
-            emit AmericanBarrierUpdated(_instrumentId, _barrierId, _timestamp);
-            return;
-        }
-        (uint16 barrierPCT, , uint64 period, uint64 expiry, address underlying, address strike) = _getBarrierInformation(_instrumentId, _barrierId);
-        (uint256 price, ) = _getPriceAtTimestamp(underlying, strike, _timestamp);
-        (uint256 spotPriceAtCreation,) = _getPriceAtTimestamp(underlying, strike, expiry - period);
-        if (spotPriceAtCreation == 0) revert OC_PriceNotReported();
-        // TODO is there a better way to do the rounding? This rounding favours one case over another but should cancel out on the whole?
-        uint256 barrierBreachPrice = spotPriceAtCreation.mulDivUp(barrierPCT, 100);
-        bool americanBarrierBreached = _compareBarrierPrices(barrierBreachPrice, price, barrierPCT);
-        if (!americanBarrierBreached) revert IO_AmericanBarrierNotBreached();
-        americanBarrierBreaches[_instrumentId][_barrierId] = _timestamp;
-        emit AmericanBarrierUpdated(_instrumentId, _barrierId, _timestamp);
-    }
 
 
     /*///////////////////////////////////////////////////////////////
@@ -196,26 +156,6 @@ contract PythOracle is IOracle, InstrumentOracle, Ownable {
         priceFeedIds[_id] = _asset;
 
         emit PriceFeedIDUpdated(_id, _asset);
-    }
-
-    /**
-     * @dev set the pyth contract for this oracle
-     * @param _pyth the address of the pyth contract
-     */
-    function setPyth(address _pyth) external onlyOwner {
-        if (_pyth == address(0)) revert OC_ZeroAddress();
-        pyth = IPyth(_pyth);
-        emit PythUpdated(_pyth);
-    }
-
-    /**
-     * @dev set the InstrumentGrappa contract for this oracle
-     * @param _instrumentGrappa the address of the InstrumentGrappa contract
-     */
-    function setInstrumentGrappa(address _instrumentGrappa) external override onlyOwner {
-        if (_instrumentGrappa == address(0)) revert OC_ZeroAddress();
-        instrumentGrappa = IInstrumentGrappa(_instrumentGrappa);
-        emit InstrumentGrappaUpdated(_instrumentGrappa);
     }
 
     /**
@@ -270,44 +210,6 @@ contract PythOracle is IOracle, InstrumentOracle, Ownable {
      */
     function _isPriceFinalized(address, uint256) internal view virtual returns (bool) {
         return true;
-    }
-
-    function _getBarrierInformation(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint16 barrierPCT, BarrierExerciseType exerciseType, uint64 period, uint64 expiry, address underlying, address strike) {
-        (uint16 _barrierPCT, , , BarrierExerciseType _exerciseType) = instrumentGrappa.getDetailFromBarrierId(_barrierId);
-        (uint64 _period, , , , Option[] memory options) = instrumentGrappa.getDetailFromInstrumentId(_instrumentId);
-        (, uint40 productId, uint64 _expiry, , ) = instrumentGrappa.getDetailFromTokenId(options[0].tokenId);
-        (, , address _underlying, , address _strike, , ,) = instrumentGrappa.getDetailFromProductId(productId);
-        return (_barrierPCT, _exerciseType, _period, _expiry, _underlying, _strike);
-    }
-
-    function _isAmericanBarrierBreached(uint256 _instrumentId, uint32 _barrierId, address underlying, address strike) internal view returns (bool isBreached, bool isFinalized) {
-        uint256 americanBarrierBreachTimestamp = americanBarrierBreaches[_instrumentId][_barrierId];
-        if (americanBarrierBreachTimestamp == 0) {
-            return (false, true);
-        } else {
-            (, bool isAmericanBarrierBreachPriceFinalized) = _getPriceAtTimestamp(underlying, strike, americanBarrierBreachTimestamp);
-            return (true, isAmericanBarrierBreachPriceFinalized);
-        }
-    }
-
-    function _isEuropeanBarrierBreached(uint64 expiry, uint64 period, uint16 barrierPCT, address underlying, address strike) internal view returns (bool isBreached, bool isFinalized) {
-        (uint256 spotPriceAtCreation, bool isSpotPriceAtCreationFinalized) = _getPriceAtTimestamp(underlying, strike, expiry - period);
-        if (spotPriceAtCreation == 0) revert OC_PriceNotReported();
-        (uint256 expiryPrice, bool isExpiryPriceFinalized) = _getPriceAtTimestamp(underlying, strike, expiry);
-        if (expiryPrice == 0) revert OC_PriceNotReported();
-        bool europeanBarrierFinalized = isSpotPriceAtCreationFinalized && isExpiryPriceFinalized;
-        // TODO is there a better way to do the rounding? This rounding favours one case over another but should cancel out on the whole?
-        uint256 barrierBreachPrice = spotPriceAtCreation.mulDivUp(barrierPCT, 100);
-        bool europeanBarrierBreached = _compareBarrierPrices(barrierBreachPrice, expiryPrice, barrierPCT);
-        return (europeanBarrierBreached, europeanBarrierFinalized);
-    }
-
-    function _compareBarrierPrices(uint256 _barrierBreachPrice, uint256 _comparisonPrice, uint16 _barrierPCT) internal pure returns (bool isBreached) {
-        if (_barrierPCT < 100) {
-            return _comparisonPrice < _barrierBreachPrice;
-        } else {
-            return _comparisonPrice > _barrierBreachPrice;
-        }
     }
 
     /**

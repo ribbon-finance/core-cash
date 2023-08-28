@@ -29,7 +29,7 @@ contract PythOracleDisputable is PythOracle {
                                 Constructor
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, address _pyth, address _instrumentGrappaAddress) PythOracle(_owner, _pyth, _instrumentGrappaAddress) {}
+    constructor(address _owner, address _pyth) PythOracle(_owner, _pyth) {}
 
     /*///////////////////////////////////////////////////////////////
                             External Functions
