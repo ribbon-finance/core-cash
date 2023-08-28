@@ -274,7 +274,7 @@ contract InstrumentGrappa is Grappa {
         (address oracle,, address underlying,, address strike,,,) = getDetailFromProductId(productId);
         uint256 spotPriceAtCreation = _getOraclePrice(oracle, underlying, strike, expiry - period);
         // By rounding up below, we end up favouring certain barriers over others
-        uint256 barrierBreachThreshold = spotPriceAtCreation.mulDivUp(barrierPCT, 100);
+        uint256 barrierBreachThreshold = spotPriceAtCreation.mulDivUp(barrierPCT, UNIT_PERCENTAGE);
         if (exerciseType == BarrierExerciseType.DISCRETE || exerciseType == BarrierExerciseType.CONTINUOUS) {
             uint256[] memory updates = IInstrumentOracle(oracle).barrierUpdates(_instrumentId, _barrierId);
             for (uint256 i = 0; i < updates.length; i++) {
@@ -491,7 +491,7 @@ contract InstrumentGrappa is Grappa {
     }
 
     function _comparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT) internal pure returns (bool isBreached) {
-        if (_barrierPCT < 100) {
+        if (_barrierPCT < UNIT_PERCENTAGE) {
             return _comparisonPrice < _barrierBreachThreshold;
         } else {
             return _comparisonPrice > _barrierBreachThreshold;

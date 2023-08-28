@@ -42,46 +42,46 @@ contract ChainlinkOracleDisputable is ChainlinkOracle {
     /**
      * @dev view function to check if dispute period is over
      */
-    function isExpiryPriceFinalized(address _base, address _quote, uint256 _expiry) external view returns (bool) {
-        return _isExpiryPriceFinalized(_base, _quote, _expiry);
+    function isPriceFinalized(address _base, address _quote, uint256 _timestamp) external view returns (bool) {
+        return _isPriceFinalized(_base, _quote, _timestamp);
     }
 
     /**
-     * @dev dispute an reported expiry price from the owner. Cannot dispute an un-reported price
+     * @dev dispute a reported price from the owner. Cannot dispute an un-reported price
      * @param _base base asset
      * @param _quote quote asset
-     * @param _expiry expiry timestamp
+     * @param _timestamp timestamp
      * @param _newPrice new price to set
      */
-    function disputePrice(address _base, address _quote, uint256 _expiry, uint256 _newPrice) external onlyOwner {
-        ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];
+    function disputePrice(address _base, address _quote, uint256 _timestamp, uint256 _newPrice) external onlyOwner {
+        HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
         if (entry.reportAt == 0) revert OC_PriceNotReported();
 
         if (entry.isDisputed) revert OC_PriceDisputed();
 
         if (entry.reportAt + disputePeriod[_base][_quote] < block.timestamp) revert OC_DisputePeriodOver();
 
-        expiryPrices[_base][_quote][_expiry] = ExpiryPrice(true, uint64(block.timestamp), _newPrice.safeCastTo128());
+        historicalPrices[_base][_quote][_timestamp] = HistoricalPrice(true, uint64(block.timestamp), _newPrice.safeCastTo128());
 
-        emit ExpiryPriceSet(_base, _quote, _expiry, _newPrice, true);
+        emit HistoricalPriceSet(_base, _quote, _timestamp, _newPrice, true);
     }
 
     /**
      * @dev owner can set a price if the the price has not been pushed for at least 36 hours
      * @param _base base asset
      * @param _quote quote asset
-     * @param _expiry expiry timestamp
+     * @param _timestamp timestamp
      * @param _price price to set
      */
-    function setExpiryPriceBackup(address _base, address _quote, uint256 _expiry, uint256 _price) external onlyOwner {
-        ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];
+    function setExpiryPriceBackup(address _base, address _quote, uint256 _timestamp, uint256 _price) external onlyOwner {
+        HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
         if (entry.reportAt != 0) revert OC_PriceReported();
 
-        if (_expiry + 36 hours > block.timestamp) revert OC_GracePeriodNotOver();
+        if (_timestamp + 36 hours > block.timestamp) revert OC_GracePeriodNotOver();
 
-        expiryPrices[_base][_quote][_expiry] = ExpiryPrice(true, uint64(block.timestamp), _price.safeCastTo128());
+        historicalPrices[_base][_quote][_timestamp] = HistoricalPrice(true, uint64(block.timestamp), _price.safeCastTo128());
 
-        emit ExpiryPriceSet(_base, _quote, _expiry, _price, true);
+        emit HistoricalPriceSet(_base, _quote, _timestamp, _price, true);
     }
 
     /**
@@ -99,11 +99,11 @@ contract ChainlinkOracleDisputable is ChainlinkOracle {
     }
 
     /**
-     * @dev overrides _isExpiryPriceFinalized() from ChainlinkOracle to check if dispute period is over
+     * @dev overrides _isPriceFinalized() from ChainlinkOracle to check if dispute period is over
      *      if true, getPriceAtTimestamp will return (price, true)
      */
-    function _isExpiryPriceFinalized(address _base, address _quote, uint256 _expiry) internal view override returns (bool) {
-        ExpiryPrice memory entry = expiryPrices[_base][_quote][_expiry];
+    function _isPriceFinalized(address _base, address _quote, uint256 _timestamp) internal view override returns (bool) {
+        HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
         if (entry.reportAt == 0) return false;
 
         if (entry.isDisputed) return true;

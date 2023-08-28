@@ -7,6 +7,9 @@ uint8 constant UNIT_DECIMALS = 6;
 ///@dev unit scaled used to convert amounts.
 uint256 constant UNIT = 10 ** 6;
 
+///@dev unit percentage value
+uint8 constant UNIT_PERCENTAGE = 100;
+
 ///@dev int scaled used to convert amounts.
 int256 constant sUNIT = int256(10 ** 6);
 

@@ -22,7 +22,7 @@ contract ChainlinkOracle is IOracle, Ownable {
     using FixedPointMathLib for uint256;
     using SafeCastLib for uint256;
 
-    struct ExpiryPrice {
+    struct HistoricalPrice {
         bool isDisputed;
         uint64 reportAt;
         uint128 price;
@@ -35,8 +35,8 @@ contract ChainlinkOracle is IOracle, Ownable {
         bool isStable; // answer of stable asset can be used as long as the answer is not stale
     }
 
-    ///@dev base => quote => expiry => price.
-    mapping(address => mapping(address => mapping(uint256 => ExpiryPrice))) public expiryPrices;
+    ///@dev base => quote => timestamp => price.
+    mapping(address => mapping(address => mapping(uint256 => HistoricalPrice))) public historicalPrices;
 
     // asset => aggregator
     mapping(address => AggregatorData) public aggregators;
@@ -45,7 +45,7 @@ contract ChainlinkOracle is IOracle, Ownable {
                                  Events
     //////////////////////////////////////////////////////////////*/
 
-    event ExpiryPriceSet(address base, address quote, uint256 expiry, uint256 price, bool isDispute);
+    event HistoricalPriceSet(address base, address quote, uint256 timestamp, uint256 price, bool isDispute);
 
     /*///////////////////////////////////////////////////////////////
                                 Constructor
@@ -87,10 +87,10 @@ contract ChainlinkOracle is IOracle, Ownable {
         view
         returns (uint256 price, bool isFinalized)
     {
-        ExpiryPrice memory data = expiryPrices[_base][_quote][_timestamp];
+        HistoricalPrice memory data = historicalPrices[_base][_quote][_timestamp];
         if (data.reportAt == 0) revert OC_PriceNotReported();
 
-        return (data.price, _isExpiryPriceFinalized(_base, _quote, _timestamp));
+        return (data.price, _isPriceFinalized(_base, _quote, _timestamp));
     }
 
     /**
@@ -102,22 +102,22 @@ contract ChainlinkOracle is IOracle, Ownable {
     }
 
     /**
-     * @notice report expiry price and write to storage
-     * @dev anyone can call this function and freeze the expiry price
+     * @notice report price and write to storage
+     * @dev anyone can call this function and freeze the price for a timestamp
      */
-    function reportExpiryPrice(address _base, address _quote, uint256 _expiry, uint80 _baseRoundId, uint80 _quoteRoundId)
+    function reportPrice(address _base, address _quote, uint256 _timestamp, uint80 _baseRoundId, uint80 _quoteRoundId)
         external
     {
-        if (_expiry > block.timestamp) revert OC_CannotReportForFuture();
-        if (expiryPrices[_base][_quote][_expiry].reportAt != 0) revert OC_PriceReported();
+        if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
+        if (historicalPrices[_base][_quote][_timestamp].reportAt != 0) revert OC_PriceReported();
 
-        (uint256 basePrice, uint8 baseDecimals) = _getLastPriceBeforeExpiry(_base, _baseRoundId, _expiry);
-        (uint256 quotePrice, uint8 quoteDecimals) = _getLastPriceBeforeExpiry(_quote, _quoteRoundId, _expiry);
+        (uint256 basePrice, uint8 baseDecimals) = _getLastPriceBeforeTimestamp(_base, _baseRoundId, _timestamp);
+        (uint256 quotePrice, uint8 quoteDecimals) = _getLastPriceBeforeTimestamp(_quote, _quoteRoundId, _timestamp);
         uint256 price = _toPriceWithUnitDecimals(basePrice, quotePrice, baseDecimals, quoteDecimals);
 
-        expiryPrices[_base][_quote][_expiry] = ExpiryPrice(false, uint64(block.timestamp), price.safeCastTo128());
+        historicalPrices[_base][_quote][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
 
-        emit ExpiryPriceSet(_base, _quote, _expiry, price, false);
+        emit HistoricalPriceSet(_base, _quote, _timestamp, price, false);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -140,7 +140,7 @@ contract ChainlinkOracle is IOracle, Ownable {
      * @dev this oracle has no dispute mechanism, so always return true.
      *      a un-reported price should have reverted at this point.
      */
-    function _isExpiryPriceFinalized(address, address, uint256) internal view virtual returns (bool) {
+    function _isPriceFinalized(address, address, uint256) internal view virtual returns (bool) {
         return true;
     }
 
@@ -187,12 +187,12 @@ contract ChainlinkOracle is IOracle, Ownable {
     }
 
     /**
-     * @notice get the price from an roundId, and make sure it is the last price before expiry
+     * @notice get the price from an roundId, and make sure it is the last price before specified timestamp
      * @param _asset asset to report
      * @param _roundId chainlink roundId that should be used
-     * @param _expiry expiry timestamp to report
+     * @param _timestamp timestamp to check
      */
-    function _getLastPriceBeforeExpiry(address _asset, uint80 _roundId, uint256 _expiry)
+    function _getLastPriceBeforeTimestamp(address _asset, uint80 _roundId, uint256 _timestamp)
         internal
         view
         returns (uint256 price, uint8 decimals)
@@ -203,13 +203,13 @@ contract ChainlinkOracle is IOracle, Ownable {
         // request answer from Chainlink
         (, int256 answer,, uint256 updatedAt,) = IAggregatorV3(address(aggregator.addr)).getRoundData(_roundId);
 
-        // if expiry < updatedAt, this line will revert
-        if (_expiry - updatedAt > aggregator.maxDelay) revert CL_StaleAnswer();
+        // if timestamp < updatedAt, this line will revert
+        if (_timestamp - updatedAt > aggregator.maxDelay) revert CL_StaleAnswer();
 
-        // it is not a stable asset: make sure timestamp of answer #(round + 1) is higher than expiry
+        // it is not a stable asset: make sure timestamp of answer #(round + 1) is higher than provided timestamp
         if (!aggregator.isStable) {
             (,,, uint256 nextRoundUpdatedAt,) = IAggregatorV3(address(aggregator.addr)).getRoundData(_roundId + 1);
-            if (nextRoundUpdatedAt <= _expiry) revert CL_RoundIdTooSmall();
+            if (nextRoundUpdatedAt <= _timestamp) revert CL_RoundIdTooSmall();
         }
 
         return (uint256(answer), aggregator.decimals);
