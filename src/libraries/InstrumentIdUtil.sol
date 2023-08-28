@@ -93,7 +93,7 @@ library InstrumentIdUtil {
     struct OptionExtended {
         uint16 participationPCT;
         Barrier barrier;
-        uint256 token;
+        uint256 tokenId;
     }
 
     struct Barrier {
@@ -304,6 +304,15 @@ library InstrumentIdUtil {
     }
 
     /**
+     * @notice calculate expiry for given instrument parameters.
+     * @param _instrument Instrument struct
+     * @return expiry expiry of the instrument
+     */
+    function getExpiry(Instrument memory _instrument) internal view returns (uint64 expiry) {
+        expiry = TokenIdUtil.parseExpiry(_instrument.options[0].tokenId);
+    }
+
+    /**
      * @notice derive frequency denominated in seconds
      * @param frequency barrier observation frequency type
      * @return frequency denominated in seconds
@@ -390,7 +399,7 @@ library InstrumentIdUtil {
                 option.barrier.exerciseType
             );
 
-            options[i] = Option(option.participationPCT, optionBarrierId, option.token);
+            options[i] = Option(option.participationPCT, optionBarrierId, option.tokenId);
             unchecked {
                 ++i;
             }
