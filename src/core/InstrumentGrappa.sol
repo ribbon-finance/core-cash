@@ -111,7 +111,7 @@ contract InstrumentGrappa is Grappa {
      * @param _instrumentId instrument id`
      */
     function getDetailFromInstrumentId(uint256 _instrumentId)
-        external
+        public
         view
         returns (uint64 period, uint8 engine, uint40 autocallId, uint256 coupons, Option[] memory options)
     {
@@ -161,7 +161,7 @@ contract InstrumentGrappa is Grappa {
      * @param _barrierId barrier id
      */
     function getDetailFromBarrierId(uint32 _barrierId)
-        external
+        public
         pure
         returns (
             uint16 barrierPCT,
@@ -402,7 +402,7 @@ contract InstrumentGrappa is Grappa {
             BarrierObservationFrequencyType observationFrequency,
             BarrierTriggerType triggerType,
             BarrierExerciseType exerciseType
-        ) = InstrumentIdUtil.parseBarrierId(barrierId);
+        ) = getDetailFromBarrierId(barrierId);
 
         //TODO
 
