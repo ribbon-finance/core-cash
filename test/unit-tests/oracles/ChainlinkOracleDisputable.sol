@@ -81,13 +81,13 @@ contract ChainlinkOracleDisputableTest is Test {
     }
 
     function testIsFinalizedIsFalseForUnreportedExpiry() public {
-        assertEq(oracle.isExpiryPriceFinalized(weth, usdc, expiry), false);
+        assertEq(oracle.isPriceFinalized(weth, usdc, expiry), false);
     }
 
     function testCannotDisputeAfterDisputePeriod() public {
         uint256 period = 2 hours;
         oracle.setDisputePeriod(weth, usdc, period);
-        oracle.reportExpiryPrice(weth, usdc, expiry, roundId, roundId);
+        oracle.reportPrice(weth, usdc, expiry, roundId, roundId);
 
         vm.warp(expiry + period + 1);
 
@@ -95,12 +95,12 @@ contract ChainlinkOracleDisputableTest is Test {
         oracle.disputePrice(weth, usdc, expiry, 3000 * UNIT);
 
         // price is finalized
-        assertEq(oracle.isExpiryPriceFinalized(weth, usdc, expiry), true);
+        assertEq(oracle.isPriceFinalized(weth, usdc, expiry), true);
     }
 
     function testOwnerDisputePrice() public {
         oracle.setDisputePeriod(weth, usdc, 2 hours);
-        oracle.reportExpiryPrice(weth, usdc, expiry, roundId, roundId);
+        oracle.reportPrice(weth, usdc, expiry, roundId, roundId);
         // dispute
         oracle.disputePrice(weth, usdc, expiry, 3000 * UNIT);
 
@@ -113,7 +113,7 @@ contract ChainlinkOracleDisputableTest is Test {
     function testCannotDisputeSameExpiryTwice() public {
         oracle.setDisputePeriod(weth, usdc, 2 hours);
 
-        oracle.reportExpiryPrice(weth, usdc, expiry, roundId, roundId);
+        oracle.reportPrice(weth, usdc, expiry, roundId, roundId);
 
         oracle.disputePrice(weth, usdc, expiry, 3000 * UNIT);
         vm.expectRevert(OC_PriceDisputed.selector);
@@ -123,7 +123,7 @@ contract ChainlinkOracleDisputableTest is Test {
     // setExpiryPriceBackup tests
 
     function testCannotForceSetPriceIfPriceIsReported() public {
-        oracle.reportExpiryPrice(weth, usdc, expiry, roundId, roundId);
+        oracle.reportPrice(weth, usdc, expiry, roundId, roundId);
         // setExpiryPriceBackup
         vm.expectRevert(OC_PriceReported.selector);
         oracle.setExpiryPriceBackup(weth, usdc, expiry, 3500 * UNIT);

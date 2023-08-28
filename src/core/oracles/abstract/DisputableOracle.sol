@@ -29,7 +29,7 @@ abstract contract DisputableOracle is BaseOracle {
     /**
      * @dev return the maximum dispute period for the oracle
      */
-    function maxDisputePeriod() external view returns (uint256) {
+    function maxDisputePeriod() external view virtual returns (uint256) {
         return MAX_DISPUTE_PERIOD;
     }
 
@@ -89,7 +89,7 @@ abstract contract DisputableOracle is BaseOracle {
      * @dev checks if dispute period is over
      *      if true, getPriceAtTimestamp will return (price, true)
      */
-    function _isPriceFinalized(address _base, address _quote, uint256 _timestamp) internal view override returns (bool) {
+    function _isPriceFinalized(address _base, address _quote, uint256 _timestamp) internal view virtual override returns (bool) {
         HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
         if (entry.reportAt == 0) return false;
 

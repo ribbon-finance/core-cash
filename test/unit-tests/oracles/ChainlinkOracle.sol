@@ -276,17 +276,17 @@ contract ChainlinkOracleTestWriteOracle is Test {
     }
 
     function testCanReportPrice() public {
-        oracle.reportExpiryPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
 
         (uint256 price,) = oracle.getPriceAtTimestamp(weth, usdc, expiry);
         assertEq(price, 4000 * UNIT);
     }
 
     function testCannotReportPriceTwice() public {
-        oracle.reportExpiryPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
 
         vm.expectRevert(OC_PriceReported.selector);
-        oracle.reportExpiryPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
     }
 
     function testCannotGetUnreportedExpiry() public {
@@ -300,12 +300,12 @@ contract ChainlinkOracleTestWriteOracle is Test {
 
         // the oracle should still revert if someone is trying to set the price for the future
         vm.expectRevert(OC_CannotReportForFuture.selector);
-        oracle.reportExpiryPrice(weth, usdc, block.timestamp + 10, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, block.timestamp + 10, wethRoundIdToReport, usdcRoundIdToReport);
     }
 
     function testCannotReportWhenAggregatorIsNotSet() public {
         vm.expectRevert(CL_AggregatorNotSet.selector);
-        oracle.reportExpiryPrice(weth, address(1234), expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, address(1234), expiry, wethRoundIdToReport, usdcRoundIdToReport);
     }
 
     function testCannotReportPriceIfStablePriceIsStale() public {
@@ -313,7 +313,7 @@ contract ChainlinkOracleTestWriteOracle is Test {
         usdcAggregator.setMockRound(usdcRoundIdToReport, 1 * 1e8, expiry - usdcMaxDelay - 10);
 
         vm.expectRevert(CL_StaleAnswer.selector);
-        oracle.reportExpiryPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
     }
 
     function testCannotReportPriceIfUnderlyingPriceIsStale() public {
@@ -321,7 +321,7 @@ contract ChainlinkOracleTestWriteOracle is Test {
         wethAggregator.setMockRound(wethRoundIdToReport, 4001 * 1e8, expiry - wethMaxDelay - 10);
 
         vm.expectRevert(CL_StaleAnswer.selector);
-        oracle.reportExpiryPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
     }
 
     function testCannotReportPriceIfWrongIdIsSpecified() public {
@@ -331,7 +331,7 @@ contract ChainlinkOracleTestWriteOracle is Test {
         wethAggregator.setMockRound(wethRoundIdToReport + 1, 4005 * 1e8, expiry - 2);
 
         vm.expectRevert(CL_RoundIdTooSmall.selector);
-        oracle.reportExpiryPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
     }
 
     function testCannotReportPriceIfRoundIDIsTooHigh() public {
@@ -339,6 +339,6 @@ contract ChainlinkOracleTestWriteOracle is Test {
         wethAggregator.setMockRound(wethRoundIdToReport, 4001 * 1e8, expiry + 1);
 
         vm.expectRevert(stdError.arithmeticError);
-        oracle.reportExpiryPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
+        oracle.reportPrice(weth, usdc, expiry, wethRoundIdToReport, usdcRoundIdToReport);
     }
 }

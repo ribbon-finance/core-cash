@@ -276,17 +276,11 @@ contract InstrumentGrappa is Grappa {
         // By rounding up below, we end up favouring certain barriers over others
         uint256 barrierBreachThreshold = spotPriceAtCreation.mulDivUp(barrierPCT, UNIT_PERCENTAGE);
         if (exerciseType == BarrierExerciseType.DISCRETE || exerciseType == BarrierExerciseType.CONTINUOUS) {
-            uint256[] memory updates = IInstrumentOracle(oracle).barrierUpdates(_instrumentId, _barrierId);
-            for (uint256 i = 0; i < updates.length; i++) {
-                uint256 updatePrice = _getOraclePrice(oracle, underlying, strike, updates[i]);
-                if (_comparePricesForBarrierBreach(barrierBreachThreshold, updatePrice, barrierPCT)) {
-                    return updatePrice;
-                }
-            }
-            return 0;
+            return _isDiscreteOrContinuousBarrierBreached(
+                oracle, underlying, strike, _instrumentId, _barrierId, barrierBreachThreshold, barrierPCT
+            );
         } else if (exerciseType == BarrierExerciseType.EUROPEAN) {
-            uint256 expiryPrice = _getOraclePrice(oracle, underlying, strike, expiry);
-            return _comparePricesForBarrierBreach(barrierBreachThreshold, expiryPrice, barrierPCT) ? expiryPrice : 0;
+            return _isEuropeanBarrierBreached(oracle, underlying, strike, expiry, barrierBreachThreshold, barrierPCT);
         } else {
             revert GP_InvalidBarrierExerciseType();
         }
@@ -488,6 +482,37 @@ contract InstrumentGrappa is Grappa {
         _payouts.append(InstrumentComponentBalance(_isCoupon, _index, _engineId, _collateralId, _payout.toUint80()));
 
         return _payouts;
+    }
+
+    function _isDiscreteOrContinuousBarrierBreached(
+        address _oracle,
+        address _underlying,
+        address _strike,
+        uint256 _instrumentId,
+        uint32 _barrierId,
+        uint256 _barrierBreachThreshold,
+        uint16 _barrierPCT
+    ) internal view returns (uint256 breachTimestamp) {
+        uint256[] memory updates = IInstrumentOracle(_oracle).barrierUpdates(_instrumentId, _barrierId);
+        for (uint256 i = 0; i < updates.length; i++) {
+            uint256 updatePrice = _getOraclePrice(_oracle, _underlying, _strike, updates[i]);
+            if (_comparePricesForBarrierBreach(_barrierBreachThreshold, updatePrice, _barrierPCT)) {
+                return updatePrice;
+            }
+        }
+        return 0;
+    }
+
+    function _isEuropeanBarrierBreached(
+        address _oracle,
+        address _underlying,
+        address _strike,
+        uint64 _expiry,
+        uint256 _barrierBreachThreshold,
+        uint16 _barrierPCT
+    ) internal view returns (uint256 breachTimestamp) {
+        uint256 expiryPrice = _getOraclePrice(_oracle, _underlying, _strike, _expiry);
+        return _comparePricesForBarrierBreach(_barrierBreachThreshold, expiryPrice, _barrierPCT) ? expiryPrice : 0;
     }
 
     function _comparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
