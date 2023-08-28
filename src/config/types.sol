@@ -44,17 +44,15 @@ struct Balance {
 
 /**
  * @dev struct representing the balance for a given instrument component
- * @param isCoupon whether it is coupon (true) or option (false)
  * @param index index in coupons or options array
- * @param engineId engine id
- * @param collateralId grappa asset id
+ * @param isCoupon whether it is coupon (true) or option (false)
+ * @param tokenId token id
  * @param amount amount the asset
  */
 struct InstrumentComponentBalance {
-    bool isCoupon;
     uint8 index;
-    uint8 engineId;
-    uint8 collateralId;
+    bool isCoupon;
+    uint256 tokenId;
     uint80 amount;
 }
 
