@@ -373,9 +373,7 @@ contract InstrumentGrappa is Grappa {
         view
         returns (InstrumentComponentBalance[] memory payouts)
     {
-        (,, uint40 autocallId,, uint256 coupons, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
-
-        uint256 expiry = Math.min(_autocallTimestamp(_instrumentId, autocallId), TokenIdUtil.parseExpiry(options[0].tokenId));
+        (,,,, uint256 coupons, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
 
         // Add payouts of all the coupons
         for (uint8 i; i < MAX_COUPON_CONSTRUCTION;) {
@@ -435,7 +433,7 @@ contract InstrumentGrappa is Grappa {
         // Apply participation
         payout = payout.mulDivDown(_option.participationPCT, HUNDRED_PCT);
         // Apply barrier
-        payout = _payoutWithBarrier(_instrumentId, _option.barrierId, payout);
+        payout = payout * _getBarrierPayout(_instrumentId, _option.barrierId);
     }
 
     /**
@@ -461,29 +459,28 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
-     * @dev add an entry to array of InstrumentComponentBalance
+     * @dev Return 1 or 0
      * @param _instrumentId  instrument id
      * @param _barrierId barrier id
-     * @param _payout payout
      */
-    function _payoutWithBarrier(uint256 _instrumentId, uint32 _barrierId, uint256 _payout) internal pure returns (uint256) {
+    function _getBarrierPayout(uint256 _instrumentId, uint32 _barrierId) internal pure returns (uint256) {
         // If (breached and knock out) or (not breached and knock in): 0
-        // return _payout
+        // return 1
         return 0;
     }
 
     /**
-     * @dev add an entry to array of InstrumentComponentBalance
+     * @dev get instrument settlement time
      * @param _instrumentId  instrument id
-     * @param _autocallId autocall id
-     * @return autocallTimestamp timestamp of autocall
+     * @return settleTime timestamp of settlement
      */
-    function _autocallTimestamp(uint256 _instrumentId, uint40 _autocallId) internal pure returns (uint256 autocallTimestamp) {
+    function _getSettleTime(uint256 _instrumentId) internal pure returns (uint256) {
         //TODO
 
+        // (,,uint40 autocallId,,) = getDetailFromInstrumentId(_instrumentId);
         // (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
         // (bool breached, bool finalized, bool timestamp) = IInstrumentOracle(oracles[instruments[_instrumentId].oracleId])isBarrierBreached(_instrumentId, barrierId)
-        // uint256 expiry = breached && finalized ? timestamp : TokenIdUtil.parseExpiry(options[0].tokenId)
-        autocallTimestamp = type(uint256).max;
+        // uint256 expiry = breached && finalized ? timestamp : getExpiry(_instrumentId);
+        return 0;
     }
 }
