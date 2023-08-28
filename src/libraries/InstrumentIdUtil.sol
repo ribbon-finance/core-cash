@@ -17,13 +17,14 @@ import "./TokenIdUtil.sol";
  *
  * Instrument (368 bits + 256 bits * MAX_OPTION_CONSTRUCTION) =
  *
- *  * ------------------ | ---------------- | -------------------- | ------------------- | --------------------------------------------- |
- *  | engineId (8 bits)  | period (64 bits) | autocallId (40 bits) | coupons (256 bits)  | options (512 bits * MAX_OPTION_CONSTRUCTION)  *
- *  *------------------- | ---------------- | -------------------- | ------------------- | --------------------------------------------- |
+ *  * ------------------ | ---------------- | --------------------- | ---------------- | ------------------ | -------------------------------------------- |
+ *  | oracleId (8 bits)  | engineId (8 bits)|  autocallId (40 bits) | period (64 bits) | coupons (256 bits) | options (512 bits * MAX_OPTION_CONSTRUCTION) *
+ *  *------------------- | ---------------- | --------------------- | ---------------- | ------------------ | -------------------------------------------- | |
  *
+ *  oracleId: id of the engine
  *  engineId: id of the engine
- *  period: duration of instrument
  *  autocallId: id of the autocall
+ *  period: duration of instrument
  *  coupons: packed coupons
  *  options: array of options
  *
@@ -69,8 +70,9 @@ import "./TokenIdUtil.sol";
 
 library InstrumentIdUtil {
     struct InstrumentExtended {
-        uint64 period;
+        uint8 oracleId;
         uint8 engineId;
+        uint64 period;
         Autocall autocall;
         Coupon[] coupons;
         OptionExtended[] options;
@@ -108,9 +110,10 @@ library InstrumentIdUtil {
      */
     function serialize(InstrumentExtended memory _instrument) internal pure returns (Instrument memory) {
         return Instrument(
-            _instrument.period,
+            _instrument.oracleId,
             _instrument.engineId,
             serializeAutocall(_instrument.autocall),
+            _instrument.period,
             serializeCoupons(_instrument.coupons),
             serializeOptions(_instrument.options)
         );
@@ -123,7 +126,7 @@ library InstrumentIdUtil {
      */
     function getInstrumentId(Instrument memory _instrument) internal pure returns (uint256 instrumentId) {
         bytes32 start =
-            keccak256(abi.encode(_instrument.period, _instrument.engineId, _instrument.autocallId, _instrument.coupons));
+            keccak256(abi.encode(_instrument.oracleId, _instrument.engineId, _instrument.autocallId, _instrument.period, _instrument.coupons));
 
         Option[] memory options = _instrument.options;
         for (uint256 i = 0; i < options.length; i++) {

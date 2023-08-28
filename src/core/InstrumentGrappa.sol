@@ -48,7 +48,7 @@ contract InstrumentGrappa is Grappa {
                                 Events
     //////////////////////////////////////////////////////////////*/
 
-    event InstrumentComponentSettled(address account, bool isCoupon, uint8 index, uint256 payout);
+    event InstrumentComponentSettled(address account, uint8 index, bool isCoupon, uint80 payout);
     event InstrumentRegistered(uint256 id);
 
     /*///////////////////////////////////////////////////////////////
@@ -75,9 +75,10 @@ contract InstrumentGrappa is Grappa {
 
         if (instruments[id].options.length > 0) revert GP_InstrumentAlreadyRegistered();
 
-        instruments[id].period = sInstrument.period;
+        instruments[id].oracleId = sInstrument.oracleId;
         instruments[id].engineId = sInstrument.engineId;
         instruments[id].autocallId = sInstrument.autocallId;
+        instruments[id].period = sInstrument.period;
         instruments[id].coupons = sInstrument.coupons;
 
         for (uint8 i; i < _instrument.options.length;) {
@@ -113,12 +114,13 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromInstrumentId(uint256 _instrumentId)
         public
         view
-        returns (uint64 period, uint8 engine, uint40 autocallId, uint256 coupons, Option[] memory options)
+        returns (uint8 oracle, uint8 engine, uint40 autocallId, uint64 period, uint256 coupons, Option[] memory options)
     {
         Instrument memory _instrument = instruments[_instrumentId];
-        period = _instrument.period;
+        oracle = _instrument.oracleId;
         engine = _instrument.engineId;
         autocallId = _instrument.autocallId;
+        period = _instrument.period;
         coupons = _instrument.coupons;
         options = _instrument.options;
     }
@@ -265,6 +267,7 @@ contract InstrumentGrappa is Grappa {
         nonReentrant
         returns (InstrumentComponentBalance[] memory payouts)
     {
+
         uint8 instrumentEngineId = instruments[_instrumentId].engineId;
 
         // Settle Instrument
@@ -272,7 +275,7 @@ contract InstrumentGrappa is Grappa {
 
         for (uint8 i; i < payouts.length;) {
             InstrumentComponentBalance memory payout = payouts[i];
-            emit InstrumentComponentSettled(_account, payout.isCoupon, payout.index, payout.amount);
+            emit InstrumentComponentSettled(_account, payout.index, payout.isCoupon, payout.amount);
 
             if (!payout.isCoupon) {
                 optionToken.burnGrappaOnly(engines[instrumentEngineId], payout.tokenId, _amount);
@@ -311,11 +314,7 @@ contract InstrumentGrappa is Grappa {
      * @return payout amount paid
      *
      */
-    function getOptionPayout(uint256 _instrumentId, Option memory _option, uint256 _amount)
-        public
-        view
-        returns (uint256 payout)
-    {
+    function getOptionPayout(uint256 _instrumentId, Option memory _option, uint256 _amount) public view returns (uint256 payout) {
         uint256 payoutPerOption;
         (payoutPerOption) = _getPayoutPerOption(_instrumentId, _option);
         payout = payoutPerOption * _amount;
@@ -335,11 +334,7 @@ contract InstrumentGrappa is Grappa {
      * @return payout amount paid
      *
      */
-    function getCouponPayout(uint256 _instrumentId, uint256 _coupons, uint256 _index, uint256 _amount)
-        public
-        pure
-        returns (uint256 payout)
-    {
+    function getCouponPayout(uint256 _instrumentId, uint256 _coupons, uint256 _index, uint256 _amount) public pure returns (uint256 payout) {
         uint256 payoutPerCoupon;
         (payoutPerCoupon) = _getPayoutPerCoupon(_instrumentId, _coupons, _index);
         payout = payoutPerCoupon * _amount;
@@ -356,12 +351,11 @@ contract InstrumentGrappa is Grappa {
      * @return payouts amounts paid
      *
      */
-    function getInstrumentPayout(uint256 _instrumentId, uint256 _amount)
-        public
-        view
-        returns (InstrumentComponentBalance[] memory payouts)
-    {
-        (,, uint40 autocallId, uint256 coupons, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
+    function getInstrumentPayout(
+        uint256 _instrumentId,
+        uint256 _amount
+    ) public view returns (InstrumentComponentBalance[] memory payouts) {
+        (,, uint40 autocallId,, uint256 coupons, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
 
         // Add payouts of all the coupons
         for (uint8 i; i < MAX_COUPON_CONSTRUCTION;) {
@@ -376,7 +370,9 @@ contract InstrumentGrappa is Grappa {
         for (uint8 i; i < options.length;) {
             Option memory option = options[i];
             uint256 payout = getOptionPayout(_instrumentId, option, _amount);
-            payouts = _addToPayouts(payouts, i, false, option.tokenId, payout);
+            payouts = _addToPayouts(
+                payouts, i, false, option.tokenId, payout
+            );
             unchecked {
                 ++i;
             }
@@ -390,14 +386,15 @@ contract InstrumentGrappa is Grappa {
      * @param _coupons  coupons
      * @param _index  index within coupons
      *
-     * @return payoutPerCoupon amount paid
+     * @return payout amount paid
      *
      */
-    function _getPayoutPerCoupon(uint256 _instrumentId, uint256 _coupons, uint256 _index) internal pure returns (uint256) {
+    function _getPayoutPerCoupon(uint256 _instrumentId, uint256 _coupons, uint256 _index) internal pure returns (uint256 payout) {
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
 
         //TODO
+        // get initial spot price and multiply by coupon PCT
 
         return 0;
     }
@@ -447,9 +444,9 @@ contract InstrumentGrappa is Grappa {
      * @param _instrumentId  instrument id
      * @param _barrierId barrier id
      */
-    function _payoutWithBarrier(uint256 _payout, uint256 _instrumentId, uint32 _barrierId) internal pure returns (uint256) {
-        // If (breached and knock out) or (not breached and knock in): 0
-        // return _payout
-        return 0;
+    function _payoutWithBarrier(uint256 _payout, uint256 _instrumentId, uint32 _barrierId) internal pure returns (uint256){
+      // If (breached and knock out) or (not breached and knock in): 0
+      // return _payout
+      return 0;
     }
 }

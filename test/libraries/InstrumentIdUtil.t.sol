@@ -30,8 +30,9 @@ contract InstrumentIdLibTest is Test {
 
     function setUp() public {
         tester = new InstrumentIdUtilTester();
-        instrument.period = 1;
+        instrument.oracleId = 1;
         instrument.engineId = 1;
+        instrument.period = 1;
         InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
             uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))
         );
@@ -47,9 +48,10 @@ contract InstrumentIdLibTest is Test {
     function testSerialize() public {
         Instrument memory sInstrument = InstrumentIdUtil.serialize(instrument);
 
-        assertEq(sInstrument.period, 1);
+        assertEq(sInstrument.oracleId, 1);
         assertEq(sInstrument.engineId, 1);
         assertEq(sInstrument.autocallId, InstrumentIdUtil.getAutocallId(true, barrierId));
+        assertEq(sInstrument.period, 1);
 
         uint64[] memory coupons = new uint64[](1);
 

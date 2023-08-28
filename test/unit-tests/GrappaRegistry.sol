@@ -230,13 +230,14 @@ contract RegisterInstrumentTest is Test {
         uint256 id = grappa.registerInstrument(instrument);
         assertEq(id, instrumentId);
 
-        (uint64 period, uint8 engineId, uint40 autocallId, uint256 coupons, Option[] memory options) =
+        (uint8 oracleId, uint8 engineId, uint40 autocallId,uint64 period, uint256 coupons, Option[] memory options) =
             grappa.getDetailFromInstrumentId(id);
         Instrument memory _sInstrument = grappa.serialize(instrument);
 
-        assertEq(period, _sInstrument.period);
+        assertEq(oracleId, _sInstrument.oracleId);
         assertEq(engineId, _sInstrument.engineId);
         assertEq(autocallId, _sInstrument.autocallId);
+        assertEq(period, _sInstrument.period);
         assertEq(coupons, _sInstrument.coupons);
 
         for (uint8 i; i < options.length;) {

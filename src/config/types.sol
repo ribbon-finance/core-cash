@@ -6,16 +6,18 @@ import "./enums.sol";
 /**
  * @dev struct representing an instrument which
  *             is a construction of options and coupons
- * @param period duration of instrument
+ * @param oracleId representing oracle id
  * @param engineId representing engine id
  * @param autocallId representing the autocall feature if included
+ * @param period duration of instrument
  * @param coupons packed uint of all the coupons (64 bits each) in the instrument (4 max)
  * @param options array of all the options in the instrument
  */
 struct Instrument {
-    uint64 period;
+    uint8 oracleId;
     uint8 engineId;
     uint40 autocallId;
+    uint64 period;
     uint256 coupons;
     Option[] options;
 }
