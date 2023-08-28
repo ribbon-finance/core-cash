@@ -33,9 +33,7 @@ contract PythOracle is IOracle, Ownable {
     }
 
     // asset => timestamp => price.
-    // NOTE: You should not access this mapping directly to get prices. Instead, use the getPriceAtTimestamp method to handle stable asset cases.
-    // We leave it as public so the inheriting contracts can access this
-    mapping(address => mapping(uint256 => HistoricalPrice)) public historicalPrices;
+    mapping(address => mapping(uint256 => HistoricalPrice)) internal historicalPrices;
 
     // pyth price feed IDs (https://pyth.network/developers/price-feed-ids) => asset
     mapping(bytes32 => address) public priceFeedIds;
