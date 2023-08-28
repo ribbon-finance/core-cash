@@ -1,34 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {PythOracleDisputable} from "./PythOracleDisputable.sol";
+import {PythOracle} from "./PythOracle.sol";
 
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {SafeCastLib} from "solmate/utils/SafeCastLib.sol";
-
-//libraries
-import {InstrumentIdUtil} from "../../libraries/InstrumentIdUtil.sol";
-import {TokenIdUtil} from "../../libraries/TokenIdUtil.sol";
 // abstract
 import {InstrumentOracle} from "./abstract/InstrumentOracle.sol";
 
 // constants and types
 import "./errors.sol";
-import "../../config/types.sol";
 
 /**
  * @title InstrumentPythOracleDisputable
- * @dev return base / quote price, with 6 decimals
+ * @dev implementes barrier related logic for instruments
  */
-contract InstrumentPythOracleDisputable is PythOracleDisputable, InstrumentOracle {
-    using FixedPointMathLib for uint256;
-    using SafeCastLib for uint256;
-
+contract InstrumentPythOracleDisputable is PythOracle, InstrumentOracle {
     /*///////////////////////////////////////////////////////////////
                                 Constructor
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, address _pyth) PythOracleDisputable(_owner, _pyth) {}
+    constructor(address _owner, address _pyth) PythOracle(_owner, _pyth) {}
 
     /*///////////////////////////////////////////////////////////////
                             Privileged Functions

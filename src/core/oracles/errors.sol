@@ -33,15 +33,11 @@ error CL_RoundIdTooSmall();
 
 error PY_InvalidPriceFeedID();
 
-error PY_CannotDisputeStableAsset();
-
 error PY_DifferentPublishProvidedTimestamps();
 
 error PY_AssetPriceFeedNotSet();
 
-error PY_NegativeBasePrice();
-
-error PY_ExpoOutOfRange();
+error PY_PythPriceConversionError();
 
 // Instrument oracle
 

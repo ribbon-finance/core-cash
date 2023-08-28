@@ -12,7 +12,6 @@ abstract contract InstrumentOracle {
      * @param _instrumentId Grappa intrumentId
      * @param _barrierId Grappa barrierId
      * @param _timestamp The timestamp at which an update occurs. This could be a barrier breach, or just a general observation.
-     * The price of the underlyer and strike asset at this timestamp should be used to verify.
      */
     function updateBarrier(uint256 _instrumentId, uint32 _barrierId, uint256 _timestamp) external virtual;
 }
