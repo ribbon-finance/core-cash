@@ -111,16 +111,16 @@ contract InstrumentGrappa is Grappa {
 
     /**
      * @dev parse instrument id into composing features, coupons, options
-     * @param _instrumentId instrument id`
+     * @param _instrumentId instrument id
      */
     function getDetailFromInstrumentId(uint256 _instrumentId)
         public
         view
-        returns (uint8 oracle, uint8 engine, uint40 autocallId, uint64 period, uint256 coupons, Option[] memory options)
+        returns (uint8 oracleId, uint8 engineId, uint40 autocallId, uint64 period, uint256 coupons, Option[] memory options)
     {
         Instrument memory _instrument = instruments[_instrumentId];
-        oracle = _instrument.oracleId;
-        engine = _instrument.engineId;
+        oracleId = _instrument.oracleId;
+        engineId = _instrument.engineId;
         autocallId = _instrument.autocallId;
         period = _instrument.period;
         coupons = _instrument.coupons;
@@ -175,6 +175,14 @@ contract InstrumentGrappa is Grappa {
         )
     {
         return InstrumentIdUtil.parseBarrierId(_barrierId);
+    }
+
+    /**
+     * @dev get expiry of instrument id
+     * @param _instrumentId instrument id
+     */
+    function getExpiry(uint256 _instrumentId) public view returns (uint64 expiry) {
+        return InstrumentIdUtil.getExpiry(instruments[_instrumentId]);
     }
 
     /**
