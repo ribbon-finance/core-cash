@@ -452,7 +452,7 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
             getDetailFromProductId(productId);
 
         // expiry price of underlying, denominated in strike (usually USD), with {UNIT_DECIMALS} decimals
-        uint256 expiryPrice = _getSettlementPrice(oracle, underlying, strike, expiry);
+        uint256 expiryPrice = _getOraclePrice(oracle, underlying, strike, expiry);
 
         // cash value denominated in strike (usually USD), with {UNIT_DECIMALS} decimals
         uint256 cashValue;
@@ -472,7 +472,7 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
             cashValue = cashValue.mulDivDown(UNIT, expiryPrice);
         } else if (collateral != strike) {
             // collateral is not underlying nor strike
-            uint256 collateralPrice = _getSettlementPrice(oracle, collateral, strike, expiry);
+            uint256 collateralPrice = _getOraclePrice(oracle, collateral, strike, expiry);
             cashValue = cashValue.mulDivDown(UNIT, collateralPrice);
         }
         payoutPerOption = cashValue.convertDecimals(UNIT_DECIMALS, collateralDecimals);
@@ -504,18 +504,18 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
     }
 
     /**
-     * @dev check settlement price is finalized from oracle, and return price
+     * @dev check price is finalized from oracle, and return price
      * @param _oracle oracle contract address
      * @param _base base asset (ETH is base asset while requesting ETH / USD)
      * @param _quote quote asset (USD is quote asset while requesting ETH / USD)
-     * @param _expiry expiry timestamp
+     * @param _timestamp timestamp to check
      */
-    function _getSettlementPrice(address _oracle, address _base, address _quote, uint256 _expiry)
+    function _getOraclePrice(address _oracle, address _base, address _quote, uint256 _timestamp)
         internal
         view
         returns (uint256)
     {
-        (uint256 price, bool isFinalized) = IOracle(_oracle).getPriceAtTimestamp(_base, _quote, _expiry);
+        (uint256 price, bool isFinalized) = IOracle(_oracle).getPriceAtTimestamp(_base, _quote, _timestamp);
         if (!isFinalized) revert GP_PriceNotFinalized();
         return price;
     }

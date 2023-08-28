@@ -9,8 +9,6 @@ error OC_PriceReported();
 
 error OC_ZeroAddress();
 
-error OC_ValueUnchanged();
-
 ///@dev cannot dispute the settlement price after dispute period is over
 error OC_DisputePeriodOver();
 
@@ -47,4 +45,4 @@ error PY_ExpoOutOfRange();
 
 // Instrument oracle
 
-error IO_AmericanBarrierNotBreached();
+error IO_InvalidTimestamp();

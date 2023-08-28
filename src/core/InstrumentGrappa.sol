@@ -9,6 +9,7 @@ import {SafeCast} from "openzeppelin/utils/math/SafeCast.sol";
 // interfaces
 import {ICashOptionToken} from "../interfaces/ICashOptionToken.sol";
 import {IMarginEngine} from "../interfaces/IMarginEngine.sol";
+import {IInstrumentOracle} from "../interfaces/IInstrumentOracle.sol";
 
 // libraries
 import {InstrumentComponentBalanceUtil} from "../libraries/InstrumentComponentBalanceUtil.sol";
@@ -121,6 +122,13 @@ contract InstrumentGrappa is Grappa {
         autocallId = _instrument.autocallId;
         coupons = _instrument.coupons;
         options = _instrument.options;
+    }
+
+    function getInitialSpotPrice(uint256 _instrumentId) public view returns (uint256 price) {
+        (uint64 period,,,, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
+        (, uint40 productId, uint64 expiry,, ) = TokenIdUtil.parseTokenId(options[0].tokenId);
+        (address oracle,, address underlying,, address strike,,,) = getDetailFromProductId(productId);
+        return _getOraclePrice(oracle, underlying, strike, expiry - period);
     }
 
     /**
@@ -251,6 +259,37 @@ contract InstrumentGrappa is Grappa {
         BarrierExerciseType _exerciseType
     ) external pure returns (uint32 id) {
         id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
+    }
+
+    /**
+     * @dev check if a barrier has been breached
+     * @param _instrumentId instrument id
+     * @param _barrierId barrier id
+     * @return breachTimestamp In case of multiple breaches, we return the first breach. If the breachTimestamp is 0, it means barrier wasn't breached.
+     */
+    function isBarrierBreached(uint256 _instrumentId, uint32 _barrierId) public view returns (uint256 breachTimestamp) {
+        (uint16 barrierPCT,,, BarrierExerciseType exerciseType) = InstrumentIdUtil.parseBarrierId(_barrierId);
+        (uint64 period,,,, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
+        (, uint40 productId, uint64 expiry,, ) = TokenIdUtil.parseTokenId(options[0].tokenId);
+        (address oracle,, address underlying,, address strike,,,) = getDetailFromProductId(productId);
+        uint256 spotPriceAtCreation = _getOraclePrice(oracle, underlying, strike, expiry - period);
+        // By rounding up below, we end up favouring certain barriers over others
+        uint256 barrierBreachThreshold = spotPriceAtCreation.mulDivUp(barrierPCT, 100);
+        if (exerciseType == BarrierExerciseType.DISCRETE || exerciseType == BarrierExerciseType.CONTINUOUS) {
+            uint256[] memory updates = IInstrumentOracle(oracle).barrierUpdates(_instrumentId, _barrierId);
+            for (uint256 i = 0; i < updates.length; i++) {
+                uint256 updatePrice = _getOraclePrice(oracle, underlying, strike, updates[i]);
+                if (_comparePricesForBarrierBreach(barrierBreachThreshold, updatePrice, barrierPCT)) {
+                    return updatePrice;
+                }
+            }
+            return 0;
+        } else if (exerciseType == BarrierExerciseType.EUROPEAN) {
+            uint256 expiryPrice = _getOraclePrice(oracle, underlying, strike, expiry);
+            return _comparePricesForBarrierBreach(barrierBreachThreshold, expiryPrice, barrierPCT) ? expiryPrice : 0;
+        } else {
+            revert GP_InvalidBarrierExerciseType();
+        }
     }
 
     /**
@@ -449,5 +488,13 @@ contract InstrumentGrappa is Grappa {
         _payouts.append(InstrumentComponentBalance(_isCoupon, _index, _engineId, _collateralId, _payout.toUint80()));
 
         return _payouts;
+    }
+
+    function _comparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT) internal pure returns (bool isBreached) {
+        if (_barrierPCT < 100) {
+            return _comparisonPrice < _barrierBreachThreshold;
+        } else {
+            return _comparisonPrice > _barrierBreachThreshold;
+        }
     }
 }
