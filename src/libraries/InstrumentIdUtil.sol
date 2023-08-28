@@ -125,8 +125,11 @@ library InstrumentIdUtil {
      * @return instrumentId id of the instrument
      */
     function getInstrumentId(Instrument memory _instrument) internal pure returns (uint256 instrumentId) {
-        bytes32 start =
-            keccak256(abi.encode(_instrument.oracleId, _instrument.engineId, _instrument.autocallId, _instrument.period, _instrument.coupons));
+        bytes32 start = keccak256(
+            abi.encode(
+                _instrument.oracleId, _instrument.engineId, _instrument.autocallId, _instrument.period, _instrument.coupons
+            )
+        );
 
         Option[] memory options = _instrument.options;
         for (uint256 i = 0; i < options.length; i++) {
