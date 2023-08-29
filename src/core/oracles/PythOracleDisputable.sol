@@ -28,17 +28,20 @@ contract PythOracleDisputable is PythOracle, DisputableOracle {
      * @dev checks if dispute period is over
      *      if true, getPriceAtTimestamp will return (price, true)
      */
-    function _isPriceFinalized(address _base, address _quote, uint256 _timestamp)
+    function _isPriceFinalized(address _base, uint256 _timestamp)
         internal
         view
         override(BaseOracle, DisputableOracle)
         returns (bool)
     {
-        HistoricalPrice memory entry = historicalPrices[_base][_quote][_timestamp];
+        if (stableAssets[_base]) {
+            return true;
+        }
+        HistoricalPrice memory entry = historicalPrices[_base][_timestamp];
         if (entry.reportAt == 0) return false;
 
         if (entry.isDisputed) return true;
 
-        return block.timestamp > entry.reportAt + disputePeriod[_base][_quote];
+        return block.timestamp > entry.reportAt + disputePeriod[_base];
     }
 }

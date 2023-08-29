@@ -11,11 +11,13 @@ import {BaseOracle} from "./abstract/BaseOracle.sol";
 
 // constants and types
 import "./errors.sol";
+import "../../config/constants.sol";
 
 /**
  * @title ChainlinkOracle
  * @author @antoncoding
- * @dev return base / quote price, with 6 decimals
+ * @dev return base price, with {UNIT_DECIMAL} decimals in USD.
+ * @notice should only be used for USD denominated aggregators (e.g. ETH/USD is valid while ETH/BTC is not)
  */
 contract ChainlinkOracle is IOracle, BaseOracle {
     using SafeCastLib for uint256;
@@ -24,7 +26,6 @@ contract ChainlinkOracle is IOracle, BaseOracle {
         address addr;
         uint8 decimals;
         uint32 maxDelay;
-        bool isStable; // answer of stable asset can be used as long as the answer is not stale
     }
 
     // asset => aggregator
@@ -41,15 +42,16 @@ contract ChainlinkOracle is IOracle, BaseOracle {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice  get spot price of _base, denominated in _quote.
+     * @notice  get spot price of _base, denominated in USD.
      * @param _base base asset. for ETH/USD price, ETH is the base asset
-     * @param _quote quote asset. for ETH/USD price, USD is the quote asset
-     * @return price with 6 decimals
+     * @return price with {UNIT_DECIMALS} decimals
      */
-    function getSpotPrice(address _base, address _quote) external view returns (uint256) {
+    function getSpotPrice(address _base) external view returns (uint256) {
+        if (stableAssets[_base]) {
+            return UNIT;
+        }
         (uint256 basePrice, uint8 baseDecimals) = _getSpotPriceFromAggregator(_base);
-        (uint256 quotePrice, uint8 quoteDecimals) = _getSpotPriceFromAggregator(_quote);
-        return _toPriceWithUnitDecimals(basePrice, quotePrice, baseDecimals, quoteDecimals);
+        return _toPriceWithUnitDecimals(basePrice, baseDecimals);
     }
 
     /**
@@ -66,7 +68,8 @@ contract ChainlinkOracle is IOracle, BaseOracle {
         override
         returns (uint256 price, bool isFinalized)
     {
-        return _getPriceAtTimestamp(_base, _quote, _timestamp);
+        // Since this oracle is USD-denominated, we can ignore the _quote asset. We keep it to conform to the IOracle interface.
+        return _getPriceAtTimestamp(_base, _timestamp);
     }
 
     /**
@@ -81,19 +84,18 @@ contract ChainlinkOracle is IOracle, BaseOracle {
      * @notice report price and write to storage
      * @dev anyone can call this function and freeze the price for a timestamp
      */
-    function reportPrice(address _base, address _quote, uint256 _timestamp, uint80 _baseRoundId, uint80 _quoteRoundId) external {
+    function reportPrice(address _base, uint256 _timestamp, uint80 _baseRoundId) external {
         if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
-        if (historicalPrices[_base][_quote][_timestamp].reportAt != 0) {
+        if (historicalPrices[_base][_timestamp].reportAt != 0) {
             revert OC_PriceReported();
         }
 
         (uint256 basePrice, uint8 baseDecimals) = _getLastPriceBeforeTimestamp(_base, _baseRoundId, _timestamp);
-        (uint256 quotePrice, uint8 quoteDecimals) = _getLastPriceBeforeTimestamp(_quote, _quoteRoundId, _timestamp);
-        uint256 price = _toPriceWithUnitDecimals(basePrice, quotePrice, baseDecimals, quoteDecimals);
+        uint256 price = _toPriceWithUnitDecimals(basePrice, baseDecimals);
 
-        historicalPrices[_base][_quote][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
+        historicalPrices[_base][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
 
-        emit HistoricalPriceSet(_base, _quote, _timestamp, price, false);
+        emit HistoricalPriceSet(_base, _timestamp, price, false);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -103,9 +105,9 @@ contract ChainlinkOracle is IOracle, BaseOracle {
     /**
      * @dev admin function to set aggregator address for an asset
      */
-    function setAggregator(address _asset, address _aggregator, uint32 _maxDelay, bool _isStable) external onlyOwner {
+    function setAggregator(address _asset, address _aggregator, uint32 _maxDelay) external onlyOwner {
         uint8 decimals = IAggregatorV3(_aggregator).decimals();
-        aggregators[_asset] = AggregatorData(_aggregator, decimals, _maxDelay, _isStable);
+        aggregators[_asset] = AggregatorData(_aggregator, decimals, _maxDelay);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -151,11 +153,14 @@ contract ChainlinkOracle is IOracle, BaseOracle {
             revert CL_StaleAnswer();
         }
 
-        // it is not a stable asset: make sure timestamp of answer #(round + 1) is higher than provided timestamp
-        if (!aggregator.isStable) {
-            (,,, uint256 nextRoundUpdatedAt,) = IAggregatorV3(address(aggregator.addr)).getRoundData(_roundId + 1);
-            if (nextRoundUpdatedAt <= _timestamp) revert CL_RoundIdTooSmall();
+        if (updatedAt == 0) {
+            revert CL_PriceNotReported();
         }
+
+        // If we're using the latest round, the next round's price may not have been set yet.
+        // This means we'd always have to wait till the next round's price is set for this function to not revert.
+        (,,, uint256 nextRoundUpdatedAt,) = IAggregatorV3(address(aggregator.addr)).getRoundData(_roundId + 1);
+        if (nextRoundUpdatedAt <= _timestamp) revert CL_RoundIdTooSmall();
 
         return (uint256(answer), aggregator.decimals);
     }

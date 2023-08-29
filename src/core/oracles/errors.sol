@@ -19,7 +19,7 @@ error OC_GracePeriodNotOver();
 error OC_PriceDisputed();
 
 ///@dev owner trying to set a dispute period that is invalid
-error OC_InvalidDisputePeriod();
+error OC_InvalidPeriod();
 
 // Chainlink oracle
 
@@ -28,6 +28,8 @@ error CL_AggregatorNotSet();
 error CL_StaleAnswer();
 
 error CL_RoundIdTooSmall();
+
+error CL_PriceNotReported();
 
 // Pyth oracle
 
@@ -42,3 +44,7 @@ error PY_PythPriceConversionError();
 // Instrument oracle
 
 error IO_InvalidTimestamp();
+
+// PythInstrumentOracle
+
+error PY_ReportArgumentsLengthError();

@@ -71,7 +71,7 @@ contract ChainlinkOracleDisputableTest is Test {
     }
 
     function testCannotSetDisputePeriodThatIsTooHigh() public {
-        vm.expectRevert(OC_InvalidDisputePeriod.selector);
+        vm.expectRevert(OC_InvalidPeriod.selector);
         oracle.setDisputePeriod(weth, usdc, 6 hours + 1);
     }
 

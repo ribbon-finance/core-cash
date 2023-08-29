@@ -18,7 +18,7 @@ import "../../config/constants.sol";
 
 /**
  * @title PythOracle
- * @dev return base / quote price, with 6 decimals
+ * @dev return base price, with {UNIT_DECIMALS} decimals
  */
 contract PythOracle is IOracle, BaseOracle {
     using FixedPointMathLib for uint256;
@@ -53,7 +53,7 @@ contract PythOracle is IOracle, BaseOracle {
      * @dev get price of underlying at a particular timestamp, denominated in strike asset.
      *         can revert if timestamp is in the future, or the price has not been reported yet
      * @param _base base asset. for ETH/USDC price, ETH is the base asset
-     * @param _quote quote asset. for ETH/USDC price, USDC is the quote asset
+     * @param _quote quote asset. for ETH/USD price, USD is the quote asset
      * @param _timestamp timestamp to check
      * @return price with {UNIT_DECIMALS} decimals
      * @return isFinalized bool checking if dispute period is over
@@ -63,7 +63,8 @@ contract PythOracle is IOracle, BaseOracle {
         view
         returns (uint256 price, bool isFinalized)
     {
-        return _getPriceAtTimestamp(_base, _quote, _timestamp);
+        // Since this is a USD oracle, we just ignore the _quote asset provided
+        return _getPriceAtTimestamp(_base, _timestamp);
     }
 
     /**
@@ -79,24 +80,21 @@ contract PythOracle is IOracle, BaseOracle {
      * @notice Since pyth price feeds are USD denominated, stored prices are always coverted to {UNIT_DECIMALS} decimals
      * @dev anyone can call this function and set the price for a given timestamp
      */
-    function reportPrice(bytes[] calldata _pythUpdateData, bytes32[] calldata priceIds, address _quote, uint64 _timestamp)
-        external
-        payable
-    {
+    function reportPrice(bytes[] calldata _pythUpdateData, bytes32[] calldata _priceIds, uint64 _timestamp) public payable {
         if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
         uint256 updateFee = pyth.getUpdateFee(_pythUpdateData);
         PythStructs.PriceFeed[] memory priceFeeds =
-            pyth.parsePriceFeedUpdates{value: updateFee}(_pythUpdateData, priceIds, _timestamp, _timestamp);
+            pyth.parsePriceFeedUpdates{value: updateFee}(_pythUpdateData, _priceIds, _timestamp, _timestamp);
         for (uint256 i = 0; i < priceFeeds.length; i++) {
             bytes32 id = priceFeeds[i].id;
             address base = priceFeedIds[id];
             if (base == address(0)) revert PY_AssetPriceFeedNotSet();
             uint256 publishTime = priceFeeds[i].price.publishTime;
             if (publishTime != _timestamp) revert PY_DifferentPublishProvidedTimestamps();
-            if (historicalPrices[base][_quote][_timestamp].reportAt != 0) revert OC_PriceReported();
+            if (historicalPrices[base][_timestamp].reportAt != 0) revert OC_PriceReported();
             uint256 price = _toPriceWithUnitDecimals(priceFeeds[i].price);
-            historicalPrices[base][_quote][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
-            emit HistoricalPriceSet(base, _quote, _timestamp, price, false);
+            historicalPrices[base][_timestamp] = HistoricalPrice(false, uint64(block.timestamp), price.safeCastTo128());
+            emit HistoricalPriceSet(base, _timestamp, price, false);
         }
     }
 
