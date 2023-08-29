@@ -265,9 +265,13 @@ contract InstrumentGrappa is Grappa {
      * @dev check if a barrier has been breached
      * @param _instrumentId instrument id
      * @param _barrierId barrier id
-     * @return breachTimestamp In case of multiple breaches, we return the first breach. If the breachTimestamp is 0, it means barrier wasn't breached.
+     * @return breachTimestamps In case of multiple breaches, we return the first breach. If the breachTimestamp is 0, it means barrier wasn't breached.
      */
-    function isBarrierBreached(uint256 _instrumentId, uint32 _barrierId) public view returns (uint256 breachTimestamp) {
+    function getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId)
+        public
+        view
+        returns (uint256[] memory breachTimestamps)
+    {
         (uint16 barrierPCT,,, BarrierExerciseType exerciseType) = InstrumentIdUtil.parseBarrierId(_barrierId);
         (uint64 period,,,, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
         (, uint40 productId, uint64 expiry,,) = TokenIdUtil.parseTokenId(options[0].tokenId);
@@ -275,15 +279,28 @@ contract InstrumentGrappa is Grappa {
         uint256 spotPriceAtCreation = _getOraclePrice(oracle, underlying, strike, expiry - period);
         // By rounding up below, we end up favouring certain barriers over others
         uint256 barrierBreachThreshold = spotPriceAtCreation.mulDivUp(barrierPCT, UNIT_PERCENTAGE);
-        if (exerciseType == BarrierExerciseType.DISCRETE || exerciseType == BarrierExerciseType.CONTINUOUS) {
-            return _isDiscreteOrContinuousBarrierBreached(
-                oracle, underlying, strike, _instrumentId, _barrierId, barrierBreachThreshold, barrierPCT
-            );
-        } else if (exerciseType == BarrierExerciseType.EUROPEAN) {
-            return _isEuropeanBarrierBreached(oracle, underlying, strike, expiry, barrierBreachThreshold, barrierPCT);
+        uint256[] memory updates = IInstrumentOracle(oracle).barrierUpdates(_instrumentId, _barrierId);
+        if (exerciseType == BarrierExerciseType.EUROPEAN) {
+            // Exactly one update at expiry
+            if (updates.length != 1 || updates[0] != expiry) {
+                revert GP_MissingBarrierUpdate();
+            }
+        } else if (exerciseType == BarrierExerciseType.CONTINUOUS) {
+            // At least one update at or before expiry
+            if (updates.length < 1) {
+                revert GP_MissingBarrierUpdate();
+            }
+            uint256 lastTimestamp = updates[updates.length - 1];
+            if (lastTimestamp > expiry) {
+                revert GP_MissingBarrierUpdate();
+            }
+        } else if (exerciseType == BarrierExerciseType.DISCRETE) {
+            // Zero or more updates, no specific checks needed
         } else {
             revert GP_InvalidBarrierExerciseType();
         }
+
+        return _getBarrierBreaches(oracle, underlying, strike, barrierBreachThreshold, barrierPCT, expiry, updates);
     }
 
     /**
@@ -484,35 +501,42 @@ contract InstrumentGrappa is Grappa {
         return _payouts;
     }
 
-    function _isDiscreteOrContinuousBarrierBreached(
+    /**
+     * Helper function to calculate number of breaches and populate an array of breach timestamps to be returned
+     * @param _oracle oracle adress to check
+     * @param _underlying underlying address for the barrier
+     * @param _strike strike asset for the barrier (usually USD/C)
+     * @param _barrierBreachThreshold absolute value at which barrier is breached
+     * @param _barrierPCT barrier percentage in {UNIT_PERCENTAGE_DECIMALS}
+     * @param _updates array of timestamps of all barrier updates (could be breaches or observations)
+     */
+    function _getBarrierBreaches(
         address _oracle,
         address _underlying,
         address _strike,
-        uint256 _instrumentId,
-        uint32 _barrierId,
         uint256 _barrierBreachThreshold,
-        uint16 _barrierPCT
-    ) internal view returns (uint256 breachTimestamp) {
-        uint256[] memory updates = IInstrumentOracle(_oracle).barrierUpdates(_instrumentId, _barrierId);
-        for (uint256 i = 0; i < updates.length; i++) {
-            uint256 updatePrice = _getOraclePrice(_oracle, _underlying, _strike, updates[i]);
-            if (_comparePricesForBarrierBreach(_barrierBreachThreshold, updatePrice, _barrierPCT)) {
-                return updatePrice;
+        uint16 _barrierPCT,
+        uint256 _expiry,
+        uint256[] memory _updates
+    ) internal view returns (uint256[] memory breachTimestamps) {
+        uint256 breachCount = 0;
+        for (uint256 i = 0; i < _updates.length; i++) {
+            uint256 updatePrice = _getOraclePrice(_oracle, _underlying, _strike, _updates[i]);
+            // A valid breach is (1) at or before expiry, (2) breaches the barrier amount
+            if (_updates[i] <= _expiry && _comparePricesForBarrierBreach(_barrierBreachThreshold, updatePrice, _barrierPCT)) {
+                breachCount++;
             }
         }
-        return 0;
-    }
-
-    function _isEuropeanBarrierBreached(
-        address _oracle,
-        address _underlying,
-        address _strike,
-        uint64 _expiry,
-        uint256 _barrierBreachThreshold,
-        uint16 _barrierPCT
-    ) internal view returns (uint256 breachTimestamp) {
-        uint256 expiryPrice = _getOraclePrice(_oracle, _underlying, _strike, _expiry);
-        return _comparePricesForBarrierBreach(_barrierBreachThreshold, expiryPrice, _barrierPCT) ? expiryPrice : 0;
+        uint256[] memory _breachTimestamps = new uint256[](breachCount);
+        uint256 j = 0;
+        for (uint256 i = 0; i < _updates.length; i++) {
+            uint256 updatePrice = _getOraclePrice(_oracle, _underlying, _strike, _updates[i]);
+            if (_updates[i] <= _expiry && _comparePricesForBarrierBreach(_barrierBreachThreshold, updatePrice, _barrierPCT)) {
+                _breachTimestamps[j] = _updates[i];
+                j++;
+            }
+        }
+        return _breachTimestamps;
     }
 
     function _comparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
