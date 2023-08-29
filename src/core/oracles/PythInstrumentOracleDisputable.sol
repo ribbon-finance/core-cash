@@ -10,15 +10,17 @@ import {InstrumentOracle} from "./abstract/InstrumentOracle.sol";
 import "./errors.sol";
 
 /**
- * @title InstrumentPythOracleDisputable
+ * @title PythInstrumentOracleDisputable
  * @dev implementes barrier related logic for instruments
  */
-contract InstrumentPythOracleDisputable is PythOracleDisputable, InstrumentOracle {
+contract PythInstrumentOracleDisputable is PythOracleDisputable, InstrumentOracle {
     /*///////////////////////////////////////////////////////////////
                                 Constructor
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, address _pyth) PythOracleDisputable(_owner, _pyth) {}
+    constructor(address _owner, address _pyth, bytes32[] memory _initialFeedIds, address[] memory _initialBaseAddresses)
+        PythOracleDisputable(_owner, _pyth, _initialFeedIds, _initialBaseAddresses)
+    {}
 
     /*///////////////////////////////////////////////////////////////
                             Privileged Functions
@@ -42,7 +44,7 @@ contract InstrumentPythOracleDisputable is PythOracleDisputable, InstrumentOracl
         address[] calldata _barrierUnderlyerAddresses
     ) external payable onlyOwner {
         if (_pythUpdateData.length != _priceIds.length || _priceIds.length != _barrierUnderlyerAddresses.length) {
-            revert PY_ReportArgumentsLengthError();
+            revert OC_ArgumentsLengthError();
         }
         reportPrice(_pythUpdateData, _priceIds, _timestamp);
         updateBarrier(_instrumentId, _barrierId, _timestamp, _barrierUnderlyerAddresses);

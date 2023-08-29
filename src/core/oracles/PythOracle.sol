@@ -40,9 +40,16 @@ contract PythOracle is IOracle, BaseOracle {
                                 Constructor
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _owner, address _pyth) BaseOracle(_owner) {
+    constructor(address _owner, address _pyth, bytes32[] memory _initialFeedIds, address[] memory _initialBaseAddresses)
+        BaseOracle(_owner)
+    {
         if (_pyth == address(0)) revert OC_ZeroAddress();
         pyth = IPyth(_pyth);
+        if (_initialFeedIds.length != _initialBaseAddresses.length) revert OC_ArgumentsLengthError();
+        for (uint256 i = 0; i < _initialFeedIds.length; i++) {
+            priceFeedIds[_initialFeedIds[i]] = _initialBaseAddresses[i];
+            emit PriceFeedIDUpdated(_initialFeedIds[i], _initialBaseAddresses[i]);
+        }
     }
 
     /*///////////////////////////////////////////////////////////////

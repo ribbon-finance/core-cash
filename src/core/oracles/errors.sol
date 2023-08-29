@@ -18,6 +18,9 @@ error OC_GracePeriodNotOver();
 ///@dev owner trying to set a dispute period that is invalid
 error OC_InvalidPeriod();
 
+///@dev used when arrays for assigning mappings differ in size
+error OC_ArgumentsLengthError();
+
 // Chainlink oracle
 
 error CL_AggregatorNotSet();
@@ -41,7 +44,3 @@ error PY_PythPriceConversionError();
 // Instrument oracle
 
 error IO_InvalidTimestamp();
-
-// PythInstrumentOracle
-
-error PY_ReportArgumentsLengthError();

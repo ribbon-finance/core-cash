@@ -15,7 +15,9 @@ import "../../config/constants.sol";
  * @dev pyth oracle that can be dispute by the owner
  */
 contract PythOracleDisputable is PythOracle, DisputableOracle {
-    constructor(address _owner, address _pyth) PythOracle(_owner, _pyth) {}
+    constructor(address _owner, address _pyth, bytes32[] memory _initialFeedIds, address[] memory _initialBaseAddresses)
+        PythOracle(_owner, _pyth, _initialFeedIds, _initialBaseAddresses)
+    {}
 
     /**
      * @dev return the maximum dispute period for the oracle
