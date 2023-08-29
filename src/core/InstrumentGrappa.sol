@@ -247,7 +247,7 @@ contract InstrumentGrappa is Grappa {
 
     /**
      * @notice    get barrier id from barrier pct, observation frequency, trigger type, exercise type
-     * @param _barrierPCT percentage of the barrier relative to initial spot price
+     * @param _barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @param _observationFrequency frequency of barrier observations
      * @param _triggerType trigger type of the barrier
      * @param _exerciseType exercise type of the barrier

@@ -4,11 +4,14 @@ pragma solidity ^0.8.0;
 ///@dev unit used for option amount and strike prices
 uint8 constant UNIT_DECIMALS = 6;
 
+///@dev unit used for percentages
+uint8 constant UNIT_PERCENTAGE_DECIMALS = 2;
+
 ///@dev unit scaled used to convert amounts.
 uint256 constant UNIT = 10 ** 6;
 
-///@dev unit percentage value
-uint8 constant UNIT_PERCENTAGE = 100;
+///@dev unit percentage representing 100% to 2 decimals (e.g. 10% = 10 * 10**2 = 1000)
+uint16 constant UNIT_PERCENTAGE = 10000;
 
 ///@dev int scaled used to convert amounts.
 int256 constant sUNIT = int256(10 ** 6);
