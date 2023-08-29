@@ -14,10 +14,10 @@ abstract contract InstrumentOracle {
      * @param _timestamp The timestamp at which an update occurs. This could be a barrier breach, or just a general observation.
      * @param _barrierUnderlyerAddresses We use this as a sanity check to ensure all barrier updates have a price set for these corresponding addresses.
      */
-    function _updateBarrier(
+    function updateBarrier(
         uint256 _instrumentId,
         uint32 _barrierId,
         uint256 _timestamp,
         address[] calldata _barrierUnderlyerAddresses
-    ) internal virtual;
+    ) public virtual;
 }

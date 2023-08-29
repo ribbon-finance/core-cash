@@ -45,27 +45,23 @@ contract InstrumentPythOracleDisputable is PythOracleDisputable, InstrumentOracl
             revert PY_ReportArgumentsLengthError();
         }
         reportPrice(_pythUpdateData, _priceIds, _timestamp);
-        _updateBarrier(_instrumentId, _barrierId, _timestamp, _barrierUnderlyerAddresses);
+        updateBarrier(_instrumentId, _barrierId, _timestamp, _barrierUnderlyerAddresses);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            Internal Functions
-    //////////////////////////////////////////////////////////////*/
-
     /**
-     * Updates the breach timestamp of a barrier. It is internal because a barrier should never be updated without the underlying timestamp's price being set.
+     * Updates the breach timestamp of a barrier. It is public because we may need to update a barrier when the underlying price has already been reported.
      * @param _instrumentId Grappa intrumentId
      * @param _barrierId Grappa barrierId
      * @param _timestamp The timestamp at which an update occurs. This could be a barrier breach, or just a general observation.
      * @param _barrierUnderlyerAddresses We use this as a sanity check to ensure all barrier updates have a price set for these corresponding addresses.
      * The price of the underlyer and strike asset at this timestamp should be used to verify.
      */
-    function _updateBarrier(
+    function updateBarrier(
         uint256 _instrumentId,
         uint32 _barrierId,
         uint256 _timestamp,
         address[] calldata _barrierUnderlyerAddresses
-    ) internal override {
+    ) public override onlyOwner {
         if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
         if (_timestamp == 0) revert IO_InvalidTimestamp();
         uint256[] memory updates = barrierUpdates[_instrumentId][_barrierId];
