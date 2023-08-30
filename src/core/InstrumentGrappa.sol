@@ -413,8 +413,21 @@ contract InstrumentGrappa is Grappa {
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
 
-        //TODO
-        // get initial spot price and multiply by coupon PCT
+        // Apply early termination
+        uint64 settleTime = _getSettleTime(_instrumentId);
+
+        // uint256 initialSpotPrice = 0; //spotPrice()
+        // uint256 barrierPayouts = _getPayoutPerBarrier(_instrumentId, _option.barrierId);
+        //
+        //
+        // if(couponType == CouponType.NONE){
+        //   payout =
+        // }
+        //
+        // // Apply barrier
+        // payout = payout * _getBarrierPayout(_instrumentId, _option.barrierId);
+        // uint256 earned = (expiry - settleTime) / coupon frequency
+
 
         return 0;
     }
@@ -428,12 +441,61 @@ contract InstrumentGrappa is Grappa {
      * @return payout payout per option
      *
      */
-    function _getPayoutPerOption(uint256 _instrumentId, Option memory _option) internal view returns (uint256 payout) {
-        (,, payout) = _getPayoutPerToken(_option.tokenId);
+    function _getPayoutPerOption(uint256 _instrumentId, Option memory _option) internal view returns (uint256) {
+        // Apply early termination
+        if(_getSettleTime(_instrumentId) < TokenIdUtil.parseExpiry(_option.tokenId)) return 0;
+
+        (,, uint256 payout) = _getPayoutPerToken(_option.tokenId);
+
         // Apply participation
         payout = payout.mulDivDown(_option.participationPCT, HUNDRED_PCT);
         // Apply barrier
-        payout = payout * _getBarrierPayout(_instrumentId, _option.barrierId);
+        payout = payout * _getPayoutPerBarrier(_instrumentId, _option.barrierId);
+
+        return payout;
+    }
+
+    /**
+     * @dev Return 0 or 1
+     * @param _instrumentId  instrument id
+     * @param _barrierId barrier id
+     */
+    function _getPayoutPerBarrier(uint256 _instrumentId, uint32 _barrierId) internal pure returns (uint256) {
+        bool breached = true; //TODO: get whether was breached -- get the length
+        return _getBarrierPayout(_instrumentId, _barrierId, breached);
+    }
+
+    /**
+     * @dev Return array of 0 or 1
+     * @param _instrumentId  instrument id
+     * @param _barrierId barrier id
+     * @param _breached barrier breached
+     */
+    function _getPayoutPerBarrier(uint256 _instrumentId, uint32 _barrierId, bool _breached) internal pure returns (uint256) {
+      (,, BarrierTriggerType triggerType, ) = parseBarrierId(_barrierId);
+
+      bool knockedOut = _breached && triggerType == BarrierTriggerType.KNOCK_OUT;
+      if(knockedOut) return 0;
+      bool notKnockedIn = !_breached && triggerType == BarrierTriggerType.KNOCK_IN;
+      if(notKnockedIn) return 0;
+
+      return 1;
+    }
+
+    /**
+     * @dev get instrument settlement time
+     * @param _instrumentId  instrument id
+     * @return settleTime timestamp of settlement
+     */
+    function _getSettleTime(uint256 _instrumentId) internal pure returns (uint256) {
+        //TODO
+
+        // (,,uint40 autocallId,,) = getDetailFromInstrumentId(_instrumentId);
+        // (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
+        // (bool breached, bool finalized, bool timestamp) = IInstrumentOracle(oracles[instruments[_instrumentId].oracleId])isBarrierBreached(_instrumentId, barrierId)
+        // uint256 expiry = breached && finalized ? timestamp : getExpiry(_instrumentId);
+        // IS REVERSE CHECK
+        return 0;
     }
 
     /**
@@ -456,31 +518,5 @@ contract InstrumentGrappa is Grappa {
         _payouts.append(InstrumentComponentBalance(_index, _isCoupon, _tokenId, _payout.toUint80()));
 
         return _payouts;
-    }
-
-    /**
-     * @dev Return 1 or 0
-     * @param _instrumentId  instrument id
-     * @param _barrierId barrier id
-     */
-    function _getBarrierPayout(uint256 _instrumentId, uint32 _barrierId) internal pure returns (uint256) {
-        // If (breached and knock out) or (not breached and knock in): 0
-        // return 1
-        return 0;
-    }
-
-    /**
-     * @dev get instrument settlement time
-     * @param _instrumentId  instrument id
-     * @return settleTime timestamp of settlement
-     */
-    function _getSettleTime(uint256 _instrumentId) internal pure returns (uint256) {
-        //TODO
-
-        // (,,uint40 autocallId,,) = getDetailFromInstrumentId(_instrumentId);
-        // (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
-        // (bool breached, bool finalized, bool timestamp) = IInstrumentOracle(oracles[instruments[_instrumentId].oracleId])isBarrierBreached(_instrumentId, barrierId)
-        // uint256 expiry = breached && finalized ? timestamp : getExpiry(_instrumentId);
-        return 0;
     }
 }
