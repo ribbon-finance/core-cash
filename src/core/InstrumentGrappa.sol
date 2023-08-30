@@ -272,10 +272,15 @@ contract InstrumentGrappa is Grappa {
         view
         returns (uint256[] memory breachTimestamps)
     {
-        (uint16 barrierPCT,,, BarrierExerciseType exerciseType) = InstrumentIdUtil.parseBarrierId(_barrierId);
-        (uint64 period,,,, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
-        (, uint40 productId, uint64 expiry,,) = TokenIdUtil.parseTokenId(options[0].tokenId);
-        (address oracle,, address underlying,, address strike,,,) = getDetailFromProductId(productId);
+        (
+            uint16 barrierPCT,
+            BarrierExerciseType exerciseType,
+            uint64 period,
+            uint64 expiry,
+            address oracle,
+            address underlying,
+            address strike
+        ) = _getInformationForBarrierBreach(_instrumentId, _barrierId);
         uint256 spotPriceAtCreation = _getOraclePrice(oracle, underlying, strike, expiry - period);
         // By rounding up below, we end up favouring certain barriers over others
         uint256 barrierBreachThreshold = spotPriceAtCreation.mulDivUp(barrierPCT, UNIT_PERCENTAGE);
@@ -499,6 +504,26 @@ contract InstrumentGrappa is Grappa {
         _payouts.append(InstrumentComponentBalance(_isCoupon, _index, _engineId, _collateralId, _payout.toUint80()));
 
         return _payouts;
+    }
+
+    function _getInformationForBarrierBreach(uint256 _instrumentId, uint32 _barrierId)
+        internal
+        view
+        returns (
+            uint16 barrierPCT,
+            BarrierExerciseType exerciseType,
+            uint64 period,
+            uint64 expiry,
+            address oracle,
+            address underlying,
+            address strike
+        )
+    {
+        (uint16 _barrierPCT,,, BarrierExerciseType _exerciseType) = InstrumentIdUtil.parseBarrierId(_barrierId);
+        (uint64 _period,,,, Option[] memory _options) = getDetailFromInstrumentId(_instrumentId);
+        (, uint40 _productId, uint64 _expiry,,) = TokenIdUtil.parseTokenId(_options[0].tokenId);
+        (address _oracle,, address _underlying,, address _strike,,,) = getDetailFromProductId(_productId);
+        return (_barrierPCT, _exerciseType, _period, _expiry, _oracle, _underlying, _strike);
     }
 
     /**

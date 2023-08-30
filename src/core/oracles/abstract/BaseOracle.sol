@@ -141,17 +141,21 @@ abstract contract BaseOracle is Ownable {
      * @param _baseDecimals decimals of _basePrice
      * @return price base price with {UNIT_DECIMALS} decimals
      */
-    function _toPriceWithUnitDecimals(uint256 _basePrice, uint8 _baseDecimals) internal pure returns (uint256 price) {
+    function _toPriceWithUnitDecimals(uint256 _basePrice, uint8 _baseDecimals) internal pure returns (uint256) {
+        uint256 price;
+
         if (_baseDecimals == UNIT_DECIMALS) {
-            return _basePrice;
-        } else {
-            // we will return basePrice * 10^(baseMulDecimals) / quotePrice;
-            int8 baseMulDecimals = int8(UNIT_DECIMALS) + int8(UNIT_DECIMALS) - int8(_baseDecimals);
-            if (baseMulDecimals > 0) {
-                price = _basePrice.mulDivUp(10 ** uint8(baseMulDecimals), UNIT);
-            } else {
-                price = _basePrice / (UNIT * (10 ** uint8(-baseMulDecimals)));
-            }
+            price = _basePrice;
+        } else if (_baseDecimals > UNIT_DECIMALS) {
+            // Loosing precision, just keep first {UNIT_DECIMALS} and drop remainder
+            uint8 diff = _baseDecimals - UNIT_DECIMALS;
+            price = _basePrice / (10 ** diff);
+        } else if (_baseDecimals < UNIT_DECIMALS) {
+            // Adding precision, just pad with zeroes
+            uint8 diff = UNIT_DECIMALS - _baseDecimals;
+            price = _basePrice * (10 ** diff);
         }
+
+        return price;
     }
 }
