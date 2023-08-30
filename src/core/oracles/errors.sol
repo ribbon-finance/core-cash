@@ -12,6 +12,9 @@ error OC_ZeroAddress();
 ///@dev cannot dispute the settlement price after dispute period is over
 error OC_DisputePeriodOver();
 
+///@dev dispute period for all assets must be set
+error OC_DisputePeriodNotSet();
+
 ///@dev cannot force-set an settlement price until grace period is passed and no one has set the price.
 error OC_GracePeriodNotOver();
 

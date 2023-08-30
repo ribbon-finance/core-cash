@@ -8,6 +8,7 @@ import {BaseOracle} from "./abstract/BaseOracle.sol";
 import {DisputableOracle} from "./abstract/DisputableOracle.sol";
 
 // constants and types
+import "./errors.sol";
 import "../../config/constants.sol";
 
 /**
@@ -38,6 +39,7 @@ contract ChainlinkOracleDisputable is ChainlinkOracle, DisputableOracle {
         if (stableAssets[_base]) {
             return true;
         }
+        if (disputePeriod[_base] == 0) revert OC_DisputePeriodNotSet();
         HistoricalPrice memory entry = historicalPrices[_base][_timestamp];
         if (entry.reportAt == 0) return false;
 

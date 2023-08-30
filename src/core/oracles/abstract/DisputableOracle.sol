@@ -40,6 +40,7 @@ abstract contract DisputableOracle is BaseOracle {
      * @param _newPrice new price to set
      */
     function disputePrice(address _base, uint256 _timestamp, uint256 _newPrice) external onlyOwner {
+        if (disputePeriod[_base] == 0) revert OC_DisputePeriodNotSet();
         HistoricalPrice memory entry = historicalPrices[_base][_timestamp];
         if (entry.reportAt == 0) revert OC_PriceNotReported();
 
@@ -71,6 +72,7 @@ abstract contract DisputableOracle is BaseOracle {
         if (stableAssets[_base]) {
             return true;
         }
+        if (disputePeriod[_base] == 0) revert OC_DisputePeriodNotSet();
         HistoricalPrice memory entry = historicalPrices[_base][_timestamp];
         if (entry.reportAt == 0) return false;
 
