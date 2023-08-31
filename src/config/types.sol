@@ -43,6 +43,16 @@ struct Balance {
 }
 
 /**
+ * @dev struct representing potential barrier breaches
+ * @param timestamp timestamp of the update
+ * @param isBreached true if breached at the provided timestamp, false otherwise
+ */
+struct Breach {
+    uint256 timestamp;
+    bool isBreached;
+}
+
+/**
  * @dev struct representing the balance for a given instrument component
  * @param isCoupon whether it is coupon (true) or option (false)
  * @param index index in coupons or options array

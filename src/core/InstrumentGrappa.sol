@@ -265,12 +265,13 @@ contract InstrumentGrappa is Grappa {
      * @dev check if a barrier has been breached
      * @param _instrumentId instrument id
      * @param _barrierId barrier id
-     * @return breachTimestamps In case of multiple breaches, we return the first breach. If the breachTimestamp is 0, it means barrier wasn't breached.
+     * @return breaches Array of breach structs representing potential barrier breaches
+     * @return breachCount Total number of breaches from all the barrier updates
      */
     function getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId)
         public
         view
-        returns (uint256[] memory breachTimestamps)
+        returns (Breach[] memory breaches, uint32 breachCount)
     {
         (
             uint16 barrierPCT,
@@ -280,7 +281,7 @@ contract InstrumentGrappa is Grappa {
             address oracle,
             address underlying,
             address strike
-        ) = _getInformationForBarrierBreach(_instrumentId, _barrierId);
+        ) = _parseBreachDetail(_instrumentId, _barrierId);
         uint256 spotPriceAtCreation = _getOraclePrice(oracle, underlying, strike, expiry - period);
         // By rounding up below, we end up favouring certain barriers over others
         uint256 barrierBreachThreshold = spotPriceAtCreation.mulDivUp(barrierPCT, UNIT_PERCENTAGE);
@@ -506,7 +507,7 @@ contract InstrumentGrappa is Grappa {
         return _payouts;
     }
 
-    function _getInformationForBarrierBreach(uint256 _instrumentId, uint32 _barrierId)
+    function _parseBreachDetail(uint256 _instrumentId, uint32 _barrierId)
         internal
         view
         returns (
@@ -543,25 +544,20 @@ contract InstrumentGrappa is Grappa {
         uint16 _barrierPCT,
         uint256 _expiry,
         uint256[] memory _updates
-    ) internal view returns (uint256[] memory breachTimestamps) {
-        uint256 breachCount = 0;
+    ) internal view returns (Breach[] memory breaches, uint32 breachCount) {
+        Breach[] memory _breaches = new Breach[](_updates.length);
+        uint32 _breachCount = 0;
         for (uint256 i = 0; i < _updates.length; i++) {
             uint256 updatePrice = _getOraclePrice(_oracle, _underlying, _strike, _updates[i]);
+            Breach memory currBreach = Breach({timestamp: _updates[i], isBreached: false});
             // A valid breach is (1) at or before expiry, (2) breaches the barrier amount
             if (_updates[i] <= _expiry && _comparePricesForBarrierBreach(_barrierBreachThreshold, updatePrice, _barrierPCT)) {
-                breachCount++;
+                currBreach.isBreached = true;
+                _breachCount++;
             }
+            _breaches[i] = currBreach;
         }
-        uint256[] memory _breachTimestamps = new uint256[](breachCount);
-        uint256 j = 0;
-        for (uint256 i = 0; i < _updates.length; i++) {
-            uint256 updatePrice = _getOraclePrice(_oracle, _underlying, _strike, _updates[i]);
-            if (_updates[i] <= _expiry && _comparePricesForBarrierBreach(_barrierBreachThreshold, updatePrice, _barrierPCT)) {
-                _breachTimestamps[j] = _updates[i];
-                j++;
-            }
-        }
-        return _breachTimestamps;
+        return (_breaches, _breachCount);
     }
 
     function _comparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
