@@ -40,7 +40,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
 
     // updateBarrier() tests
 
-    function testUpdateBarrierSingleUpdate() public {
+    function testUpdateBarrierSingleFirstUpdate() public {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         address[] memory underlyers = new address[](1);
         underlyers[0] = (USDC);
@@ -48,10 +48,67 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
         // This makes the last barrier update 1 second ago
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
+        assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 0), block.timestamp - 1);
     }
 
-    function testUpdateBarrierMultipleUpdates() public {
+    function testUpdateBarrierSingleSubsequentUpdate() public {
+        (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
+        address[] memory underlyers = new address[](1);
+        underlyers[0] = (USDC);
+        // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
+        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
+        oracle.setPriceBackup(USDC, block.timestamp - 2, 1);
+        // This makes the last barrier update 2 seconds ago
+        oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 2, underlyers);
+        assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 0), block.timestamp - 2);
+        // We do another update for 1 second ago
+        oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
+        assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 1), block.timestamp - 1);
+    }
 
+    function testUpdateBarrierMultipleFirstUpdate() public {
+        (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
+        address[] memory underlyers = new address[](1);
+        underlyers[0] = (USDC);
+        // We use the setPriceBackup to set a price for this timestamp 1 seconds ago
+        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
+        oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 1, underlyers);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 1);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 0), block.timestamp - 1);
+    }
+
+    function testUpdateBarrierMultipleSubsequentUpdate() public {
+        (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
+        address[] memory underlyers = new address[](1);
+        underlyers[0] = (USDC);
+        // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
+        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
+        oracle.setPriceBackup(USDC, block.timestamp - 2, 1);
+        // This makes the last barrier update 2 seconds ago
+        oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 2, underlyers);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 2);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 0), block.timestamp - 2);
+        // We do another update for 1 second ago
+        oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 1, underlyers);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 1), block.timestamp - 1);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 1), block.timestamp - 1);
+    }
+
+    function testUpdateBarrierMultipleMixedUpdate() public {
+        (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
+        (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
+        address[] memory underlyers = new address[](1);
+        underlyers[0] = (USDC);
+        // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
+        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
+        oracle.setPriceBackup(USDC, block.timestamp - 2, 1);
+        // This makes the last barrier update 2 seconds ago
+        oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 2, underlyers);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 2);
+        assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 0), block.timestamp - 2);
+        // We do another update for 1 second ago, but only for the first instrument-barrier pair
+        oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
+        assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 1), block.timestamp - 1);
     }
 
     function testUpdateBarrierTimestampForFutureReverts() public {
@@ -116,6 +173,3 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 2, underlyers);
     }
 }
-// if (_instrumentIds.length == 0 || _instrumentIds.length != _barrierIds.length || _barrierUnderlyerAddresses.length == 0) {
-//     revert OC_ArgumentsLengthError();
-// }
