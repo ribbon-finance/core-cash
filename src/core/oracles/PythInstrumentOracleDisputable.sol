@@ -43,7 +43,7 @@ contract PythInstrumentOracleDisputable is PythOracleDisputable, InstrumentOracl
         uint32[] calldata _barrierIds,
         address[] calldata _barrierUnderlyerAddresses
     ) external payable onlyOwner {
-        if (_pythUpdateData.length != _priceIds.length || _priceIds.length != _barrierUnderlyerAddresses.length) {
+        if (_priceIds.length != _barrierUnderlyerAddresses.length) {
             revert OC_ArgumentsLengthError();
         }
         reportPrice(_pythUpdateData, _priceIds, _timestamp);
@@ -66,7 +66,7 @@ contract PythInstrumentOracleDisputable is PythOracleDisputable, InstrumentOracl
     ) public override onlyOwner {
         if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
         if (_timestamp == 0) revert IO_InvalidTimestamp();
-        if (_instrumentIds.length != _barrierIds.length) {
+        if (_instrumentIds.length == 0 || _instrumentIds.length != _barrierIds.length || _barrierUnderlyerAddresses.length == 0) {
             revert OC_ArgumentsLengthError();
         }
         for (uint256 i = 0; i < _barrierUnderlyerAddresses.length; i++) {

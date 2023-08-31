@@ -21,7 +21,7 @@ contract PythOracleDisputable is PythOracle, DisputableOracle {
     {}
 
     /**
-     * @dev return the maximum dispute period for the oracle
+     * @dev this function is intended to be overridden and should remain "view".
      */
     function maxDisputePeriod() external view override(PythOracle, DisputableOracle) returns (uint256) {
         return MAX_DISPUTE_PERIOD;

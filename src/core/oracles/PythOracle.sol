@@ -89,6 +89,9 @@ contract PythOracle is IOracle, BaseOracle {
      */
     function reportPrice(bytes[] calldata _pythUpdateData, bytes32[] calldata _priceIds, uint64 _timestamp) public payable {
         if (_timestamp > block.timestamp) revert OC_CannotReportForFuture();
+        if (_pythUpdateData.length == 0 || _pythUpdateData.length != _priceIds.length) {
+            revert OC_ArgumentsLengthError();
+        }
         uint256 updateFee = pyth.getUpdateFee(_pythUpdateData);
         PythStructs.PriceFeed[] memory priceFeeds =
             pyth.parsePriceFeedUpdates{value: updateFee}(_pythUpdateData, _priceIds, _timestamp, _timestamp);
