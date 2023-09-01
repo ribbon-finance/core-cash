@@ -120,7 +120,7 @@ library TokenIdUtil {
      * @param tokenId token id
      * @return expiry
      */
-    function parseExpiry(uint256 tokenId) internal view returns (uint64 expiry) {
+    function parseExpiry(uint256 tokenId) internal pure returns (uint64 expiry) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             expiry := shr(128, tokenId)

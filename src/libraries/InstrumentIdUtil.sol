@@ -308,7 +308,7 @@ library InstrumentIdUtil {
      * @param _instrument Instrument struct
      * @return expiry expiry of the instrument
      */
-    function getExpiry(Instrument memory _instrument) internal view returns (uint64 expiry) {
+    function getExpiry(Instrument memory _instrument) internal pure returns (uint64 expiry) {
         expiry = TokenIdUtil.parseExpiry(_instrument.options[0].tokenId);
     }
 

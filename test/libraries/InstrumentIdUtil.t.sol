@@ -15,7 +15,7 @@ import "../../src/config/types.sol";
  * @dev tester contract to make coverage works
  */
 contract InstrumentIdUtilTester {
-    function getExpiry(Instrument memory _instrument) external view returns (uint64) {
+    function getExpiry(Instrument memory _instrument) external pure returns (uint64) {
         uint64 result = InstrumentIdUtil.getExpiry(_instrument);
         return result;
     }

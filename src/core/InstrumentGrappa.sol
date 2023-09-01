@@ -104,6 +104,7 @@ contract InstrumentGrappa is Grappa {
      */
     function serialize(InstrumentIdUtil.InstrumentExtended calldata _instrument)
         external
+        pure
         returns (Instrument memory instrument)
     {
         instrument = InstrumentIdUtil.serialize(_instrument);
@@ -309,7 +310,7 @@ contract InstrumentGrappa is Grappa {
     /**
      * @dev make sure that the instrument make sense
      */
-    function _isValidInstrumentToRegister(InstrumentIdUtil.InstrumentExtended memory _instrument) internal view {
+    function _isValidInstrumentToRegister(InstrumentIdUtil.InstrumentExtended memory _instrument) internal pure {
         // TODO
     }
 
@@ -328,6 +329,8 @@ contract InstrumentGrappa is Grappa {
         view
         returns (uint256 payout)
     {
+        if (instruments[_instrumentId].options.length == 0) revert GP_InstrumentNotRegistered();
+
         uint256 payoutPerOption;
         (payoutPerOption) = _getPayoutPerOption(_instrumentId, _option);
         payout = payoutPerOption * _amount;
@@ -349,9 +352,11 @@ contract InstrumentGrappa is Grappa {
      */
     function getCouponPayout(uint256 _instrumentId, uint256 _coupons, uint256 _index, uint256 _amount)
         public
-        pure
+        view
         returns (uint256 payout)
     {
+        if (instruments[_instrumentId].options.length == 0) revert GP_InstrumentNotRegistered();
+
         uint256 payoutPerCoupon;
         (payoutPerCoupon) = _getPayoutPerCoupon(_instrumentId, _coupons, _index);
         payout = payoutPerCoupon * _amount;
@@ -373,6 +378,8 @@ contract InstrumentGrappa is Grappa {
         view
         returns (InstrumentComponentBalance[] memory payouts)
     {
+        if (instruments[_instrumentId].options.length == 0) revert GP_InstrumentNotRegistered();
+
         (,,,, uint256 coupons, Option[] memory options) = getDetailFromInstrumentId(_instrumentId);
 
         // Add payouts of all the coupons
@@ -416,18 +423,50 @@ contract InstrumentGrappa is Grappa {
         // Apply early termination
         uint64 settleTime = _getSettleTime(_instrumentId);
 
-        // uint256 initialSpotPrice = 0; //spotPrice()
-        // uint256 barrierPayouts = _getPayoutPerBarrier(_instrumentId, _option.barrierId);
-        //
-        //
-        // if(couponType == CouponType.NONE){
-        //   payout =
-        // }
-        //
-        // // Apply barrier
-        // payout = payout * _getBarrierPayout(_instrumentId, _option.barrierId);
-        // uint256 earned = (expiry - settleTime) / coupon frequency
+        // Breach[] memory breaches = getBarrierBreaches(_instrumentId, barrierId);
+        uint256 _numInstallements = 0; //breaches.length;
 
+        // TODO require num installements match
+
+        uint256 initialSpotPrice = 0; // TODO
+        uint256 installment = (couponPCT * initialSpotPrice / HUNDRED_PCT) / _numInstallements;
+
+        uint256 numPayouts = 0;
+        uint256 latestPayout = 0;
+
+        for (uint8 i; i < _numInstallements;) {
+            uint256 barrierPayout = 0; // TODO take into account breach
+            // if(breach.timestamp > settleTime) break; // TODO
+
+            if (barrierPayout > 1) {
+                numPayouts += 1;
+                latestPayout = i;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        /**
+         * NONE:            normal coupon
+         * FIXED:           coupon barrier is 0, so will get every payout until termination
+         * PHOENIX:         coupon barrier is above 0, so will get every coupon where
+         *                  observation above barrier until termination
+         * PHOENIX_MEMORY:  coupon barrier is above 0, so will get every coupon before
+         *                  (and including) the latest observation above barrier until termination
+         * VANILLA:         coupon barrier = autocall barrier + phoenix memory so will only get one coupon
+         *
+         * NOTE:            for FIXED, PHOENIX, PHOENIX_MEMORY, VANILLA the short autocall swap
+         *                  (holder of instrument token) will get the inverse of payout for long autocall swap
+         */
+        if (couponType == CouponType.NONE) {
+            payout = numPayouts * installment;
+        } else if (couponType == CouponType.FIXED || couponType == CouponType.PHOENIX) {
+            payout = (_numInstallements - numPayouts) * installment;
+        } else {
+            payout = (_numInstallements - latestPayout) * installment;
+        }
 
         return 0;
     }
@@ -443,7 +482,7 @@ contract InstrumentGrappa is Grappa {
      */
     function _getPayoutPerOption(uint256 _instrumentId, Option memory _option) internal view returns (uint256) {
         // Apply early termination
-        if(_getSettleTime(_instrumentId) < TokenIdUtil.parseExpiry(_option.tokenId)) return 0;
+        if (_getSettleTime(_instrumentId) < TokenIdUtil.parseExpiry(_option.tokenId)) return 0;
 
         (,, uint256 payout) = _getPayoutPerToken(_option.tokenId);
 
@@ -461,25 +500,16 @@ contract InstrumentGrappa is Grappa {
      * @param _barrierId barrier id
      */
     function _getPayoutPerBarrier(uint256 _instrumentId, uint32 _barrierId) internal pure returns (uint256) {
-        bool breached = true; //TODO: get whether was breached -- get the length
-        return _getBarrierPayout(_instrumentId, _barrierId, breached);
-    }
+        if (_barrierId == 0) return 1;
+        // (,, BarrierTriggerType triggerType, ) = parseBarrierId(_barrierId);
+        // bool breached = true; //TODO: get whether was breached -- get the length
+        //
+        // bool knockedOut = _breached && _triggerType == BarrierTriggerType.KNOCK_OUT;
+        // if(knockedOut) return 0;
+        // bool notKnockedIn = !_breached && _triggerType == BarrierTriggerType.KNOCK_IN;
+        // if(notKnockedIn) return 0;
 
-    /**
-     * @dev Return array of 0 or 1
-     * @param _instrumentId  instrument id
-     * @param _barrierId barrier id
-     * @param _breached barrier breached
-     */
-    function _getPayoutPerBarrier(uint256 _instrumentId, uint32 _barrierId, bool _breached) internal pure returns (uint256) {
-      (,, BarrierTriggerType triggerType, ) = parseBarrierId(_barrierId);
-
-      bool knockedOut = _breached && triggerType == BarrierTriggerType.KNOCK_OUT;
-      if(knockedOut) return 0;
-      bool notKnockedIn = !_breached && triggerType == BarrierTriggerType.KNOCK_IN;
-      if(notKnockedIn) return 0;
-
-      return 1;
+        return 1;
     }
 
     /**
@@ -487,12 +517,12 @@ contract InstrumentGrappa is Grappa {
      * @param _instrumentId  instrument id
      * @return settleTime timestamp of settlement
      */
-    function _getSettleTime(uint256 _instrumentId) internal pure returns (uint256) {
+    function _getSettleTime(uint256 _instrumentId) internal pure returns (uint64) {
         //TODO
 
         // (,,uint40 autocallId,,) = getDetailFromInstrumentId(_instrumentId);
         // (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
-        // (bool breached, bool finalized, bool timestamp) = IInstrumentOracle(oracles[instruments[_instrumentId].oracleId])isBarrierBreached(_instrumentId, barrierId)
+        // (bool breached, bool finalized, bool timestamp) = IInstrumentOracle(oracles[instruments[_instrumentId].oracleId]).isBarrierBreached(_instrumentId, barrierId)
         // uint256 expiry = breached && finalized ? timestamp : getExpiry(_instrumentId);
         // IS REVERSE CHECK
         return 0;
