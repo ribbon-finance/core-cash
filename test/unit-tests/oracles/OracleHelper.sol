@@ -11,6 +11,8 @@ abstract contract OracleHelper {
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 
+    address public constant NON_OWNER = 0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97;
+
     address[] public COMBINED_ADDRESSES = [USDC, WETH, WBTC];
 
     // Price Feed IDs

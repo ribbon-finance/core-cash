@@ -25,27 +25,83 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         vm.warp(initialTimestamp);
     }
 
-    // reportPrice() tests
+    function setPriceBackupWithChecks(address _base, uint256 _timestamp, uint256 _price) public {
+        oracle.setPriceBackup(_base, _timestamp, _price);
+        (bool isDisputed, uint64 reportAt, uint128 price) = oracle.historicalPrices(_base, _timestamp);
+        assertEq(isDisputed, true);
+        assertEq(reportAt, block.timestamp);
+        assertEq(price, _price);
+    }
 
-    // function testReportPriceReverts() public {
-    //     oracle.reportPrice([bytes("DummyUpdaateOne")], COMBINED_PRICE_FEEDS, block.timestamp, [], [], []);
-    //     vm.expectRevert(OC_ArgumentsLengthError());
-    //     bytes[] calldata _pythUpdateData,
-    //     bytes32[] calldata _priceIds,
-    //     uint64 _timestamp,
-    //     uint256[] calldata _instrumentIds,
-    //     uint32[] calldata _barrierIds,
-    //     address[] calldata _barrierUnderlyerAddresses
-    // }
+    // #reportPrice
 
-    // updateBarrier() tests
+    function testReportPriceWithoutOwnerReverts() public {
+        (uint256[] memory tripleInstrumentIds, uint32[] memory tripleBarrierIds) = getInstrumentAndBarrierIds(3);
+        address[] memory underlyers = new address[](3);
+        underlyers[0] = WETH;
+        underlyers[1] = USDC;
+        underlyers[2] = WBTC;
+        bytes[] memory dummyPythUpdateData = new bytes[](3);
+        // We use 3 to represent USDC, WETH and WBTC
+        for (uint8 i = 0; i < 3; i++) {
+            dummyPythUpdateData[i] = bytes("0");
+        }
+        vm.startPrank(NON_OWNER);
+        vm.deal(NON_OWNER, 1 ether);
+        // This is as if we want to update the price for USDC, WETH and WBTC but only pass WETH as the underlyer
+        vm.expectRevert("Ownable: caller is not the owner");
+        oracle.reportPrice{value: 1 wei}(
+            dummyPythUpdateData,
+            COMBINED_PRICE_FEEDS,
+            uint64(block.timestamp) - 1,
+            tripleInstrumentIds,
+            tripleBarrierIds,
+            underlyers
+        );
+        vm.stopPrank();
+    }
+
+    function testReportPriceWithDifferentUnderlyerLengthReverts() public {
+        (uint256[] memory tripleInstrumentIds, uint32[] memory tripleBarrierIds) = getInstrumentAndBarrierIds(3);
+        address[] memory underlyers = new address[](1);
+        underlyers[0] = WETH;
+        bytes[] memory dummyPythUpdateData = new bytes[](3);
+        // We use 3 to represent USDC, WETH and WBTC
+        for (uint8 i = 0; i < 3; i++) {
+            dummyPythUpdateData[i] = bytes("0");
+        }
+        vm.expectRevert(OC_ArgumentsLengthError.selector);
+        // This is as if we want to update the price for USDC, WETH and WBTC but only pass WETH as the underlyer
+        oracle.reportPrice{value: 1 wei}(
+            dummyPythUpdateData,
+            COMBINED_PRICE_FEEDS,
+            uint64(block.timestamp) - 1,
+            tripleInstrumentIds,
+            tripleBarrierIds,
+            underlyers
+        );
+    }
+
+    // #updateBarrier
+
+    function testUpdateBarrierWithoutOwnerReverts() public {
+        (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
+        address[] memory underlyers = new address[](1);
+        underlyers[0] = (WETH);
+        // We use the setPriceBackup to set a price for this timestamp 1 seconds ago
+        oracle.setPriceBackup(WETH, block.timestamp - 1, 1);
+        vm.startPrank(NON_OWNER);
+        vm.expectRevert("Ownable: caller is not the owner");
+        oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
+        vm.stopPrank();
+    }
 
     function testUpdateBarrierSingleFirstUpdate() public {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 seconds ago
-        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
         // This makes the last barrier update 1 second ago
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
         assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 0), block.timestamp - 1);
@@ -54,10 +110,10 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierSingleSubsequentUpdate() public {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
-        oracle.setPriceBackup(USDC, block.timestamp - 2, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
         // This makes the last barrier update 2 seconds ago
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 2, underlyers);
         assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 0), block.timestamp - 2);
@@ -69,9 +125,9 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierMultipleFirstUpdate() public {
         (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 seconds ago
-        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
         oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 1, underlyers);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 1);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 0), block.timestamp - 1);
@@ -80,10 +136,10 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierMultipleSubsequentUpdate() public {
         (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
-        oracle.setPriceBackup(USDC, block.timestamp - 2, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
         // This makes the last barrier update 2 seconds ago
         oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 2, underlyers);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 2);
@@ -98,10 +154,10 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
-        oracle.setPriceBackup(USDC, block.timestamp - 2, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
         // This makes the last barrier update 2 seconds ago
         oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 2, underlyers);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 2);
@@ -114,7 +170,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierTimestampForFutureReverts() public {
         (uint256[] memory emptyInstrumentIds, uint32[] memory emptyBarrierIds) = getInstrumentAndBarrierIds(0);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         vm.expectRevert(OC_CannotReportForFuture.selector);
         oracle.updateBarrier(emptyInstrumentIds, emptyBarrierIds, block.timestamp + 1, underlyers);
     }
@@ -122,7 +178,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierZeroTimestampReverts() public {
         (uint256[] memory emptyInstrumentIds, uint32[] memory emptyBarrierIds) = getInstrumentAndBarrierIds(0);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         vm.expectRevert(IO_InvalidTimestamp.selector);
         oracle.updateBarrier(emptyInstrumentIds, emptyBarrierIds, 0, underlyers);
     }
@@ -130,7 +186,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierEmptyInstrumentAndBarrierIdReverts() public {
         (uint256[] memory emptyInstrumentIds, uint32[] memory emptyBarrierIds) = getInstrumentAndBarrierIds(0);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         vm.expectRevert(OC_ArgumentsLengthError.selector);
         oracle.updateBarrier(emptyInstrumentIds, emptyBarrierIds, block.timestamp - 1, underlyers);
     }
@@ -139,7 +195,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         (uint256[] memory singleInstrumentIds,) = getInstrumentAndBarrierIds(1);
         (, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         vm.expectRevert(OC_ArgumentsLengthError.selector);
         oracle.updateBarrier(singleInstrumentIds, doubleBarrierIds, block.timestamp - 1, underlyers);
     }
@@ -154,7 +210,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierAssetPriceNotReportedReverts() public {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         vm.expectRevert(OC_PriceNotReported.selector);
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
     }
@@ -162,10 +218,10 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
     function testUpdateBarrierTimestampBeforeLastUpdateReverts() public {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         address[] memory underlyers = new address[](1);
-        underlyers[0] = (USDC);
+        underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        oracle.setPriceBackup(USDC, block.timestamp - 1, 1);
-        oracle.setPriceBackup(USDC, block.timestamp - 2, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
         // This makes the last barrier update 1 second ago
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
         vm.expectRevert(IO_InvalidTimestamp.selector);
