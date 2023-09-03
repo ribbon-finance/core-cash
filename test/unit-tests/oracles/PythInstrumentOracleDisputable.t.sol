@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// import test base and helpers.
-import "forge-std/Test.sol";
 import {OracleHelper} from "./OracleHelper.sol";
 
 import {PythInstrumentOracleDisputable} from "../../../src/core/oracles/PythInstrumentOracleDisputable.sol";
@@ -16,21 +14,13 @@ import "../../../src/config/types.sol";
 import "../../../src/config/constants.sol";
 import "../../../src/core/oracles/errors.sol";
 
-contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
+contract PythInstrumentOracleDisputableTest is OracleHelper {
     PythInstrumentOracleDisputable private oracle;
     uint64 public immutable initialTimestamp = 100;
 
     function setUp() public {
         oracle = new PythInstrumentOracleDisputable(address(this), PYTH, COMBINED_PRICE_FEEDS, COMBINED_ADDRESSES);
         vm.warp(initialTimestamp);
-    }
-
-    function setPriceBackupWithChecks(address _base, uint256 _timestamp, uint256 _price) public {
-        oracle.setPriceBackup(_base, _timestamp, _price);
-        (bool isDisputed, uint64 reportAt, uint128 price) = oracle.historicalPrices(_base, _timestamp);
-        assertEq(isDisputed, true);
-        assertEq(reportAt, block.timestamp);
-        assertEq(price, _price);
     }
 
     // #reportPrice
@@ -101,7 +91,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 seconds ago
-        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1, oracle);
         // This makes the last barrier update 1 second ago
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
         assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 0), block.timestamp - 1);
@@ -112,8 +102,8 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
-        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1, oracle);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2, oracle);
         // This makes the last barrier update 2 seconds ago
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 2, underlyers);
         assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 0), block.timestamp - 2);
@@ -127,7 +117,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 seconds ago
-        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1, oracle);
         oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 1, underlyers);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 1);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 0), block.timestamp - 1);
@@ -138,8 +128,8 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
-        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1, oracle);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2, oracle);
         // This makes the last barrier update 2 seconds ago
         oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 2, underlyers);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 2);
@@ -156,8 +146,8 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
-        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1, oracle);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2, oracle);
         // This makes the last barrier update 2 seconds ago
         oracle.updateBarrier(doubleInstrumentIds, doubleBarrierIds, block.timestamp - 2, underlyers);
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[0], doubleBarrierIds[0], 0), block.timestamp - 2);
@@ -220,8 +210,8 @@ contract PythInstrumentOracleDisputableTest is OracleHelper, Test {
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 and 2 seconds ago
-        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1);
-        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2);
+        setPriceBackupWithChecks(WETH, block.timestamp - 1, 1, oracle);
+        setPriceBackupWithChecks(WETH, block.timestamp - 2, 2, oracle);
         // This makes the last barrier update 1 second ago
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
         vm.expectRevert(IO_InvalidTimestamp.selector);
