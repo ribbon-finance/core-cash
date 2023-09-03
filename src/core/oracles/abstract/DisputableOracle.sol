@@ -69,10 +69,10 @@ abstract contract DisputableOracle is BaseOracle {
      *      if true, getPriceAtTimestamp will return (price, true)
      */
     function _isPriceFinalized(address _base, uint256 _timestamp) internal view virtual override returns (bool) {
+        if (disputePeriod[_base] == 0) revert OC_DisputePeriodNotSet();
         if (stableAssets[_base]) {
             return true;
         }
-        if (disputePeriod[_base] == 0) revert OC_DisputePeriodNotSet();
         HistoricalPrice memory entry = historicalPrices[_base][_timestamp];
         if (entry.reportAt == 0) return false;
 

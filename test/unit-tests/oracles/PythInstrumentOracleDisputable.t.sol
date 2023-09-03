@@ -36,8 +36,8 @@ contract PythInstrumentOracleDisputableTest is OracleHelper {
         for (uint8 i = 0; i < 3; i++) {
             dummyPythUpdateData[i] = bytes("0");
         }
-        vm.startPrank(NON_OWNER);
         vm.deal(NON_OWNER, 1 ether);
+        vm.prank(NON_OWNER);
         // This is as if we want to update the price for USDC, WETH and WBTC but only pass WETH as the underlyer
         vm.expectRevert("Ownable: caller is not the owner");
         oracle.reportPrice{value: 1 wei}(
@@ -48,7 +48,6 @@ contract PythInstrumentOracleDisputableTest is OracleHelper {
             tripleBarrierIds,
             underlyers
         );
-        vm.stopPrank();
     }
 
     function testReportPriceWithDifferentUnderlyerLengthReverts() public {
@@ -80,10 +79,9 @@ contract PythInstrumentOracleDisputableTest is OracleHelper {
         underlyers[0] = (WETH);
         // We use the setPriceBackup to set a price for this timestamp 1 seconds ago
         oracle.setPriceBackup(WETH, block.timestamp - 1, 1);
-        vm.startPrank(NON_OWNER);
+        vm.prank(NON_OWNER);
         vm.expectRevert("Ownable: caller is not the owner");
         oracle.updateBarrier(singleInstrumentIds, singleBarrierIds, block.timestamp - 1, underlyers);
-        vm.stopPrank();
     }
 
     function testUpdateBarrierSingleFirstUpdate() public {

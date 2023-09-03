@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {BaseOracle} from "../../../src/core/oracles/abstract/BaseOracle.sol";
+import {DisputableOracle} from "../../../src/core/oracles/abstract/DisputableOracle.sol";
 
 // import test base and helpers.
 import "forge-std/Test.sol";
@@ -40,11 +41,21 @@ abstract contract OracleHelper is Test {
         return (instrumentIds, barrierIds);
     }
 
-    function setPriceBackupWithChecks(address _base, uint256 _timestamp, uint256 _price, BaseOracle oracle) public {
-        oracle.setPriceBackup(_base, _timestamp, _price);
-        (bool isDisputed, uint64 reportAt, uint128 price) = oracle.historicalPrices(_base, _timestamp);
+    function setPriceBackupWithChecks(address _base, uint256 _timestamp, uint256 _price, BaseOracle _oracle) public {
+        _oracle.setPriceBackup(_base, _timestamp, _price);
+        (bool isDisputed, uint64 reportAt, uint128 price) = _oracle.historicalPrices(_base, _timestamp);
         assertEq(isDisputed, true);
         assertEq(reportAt, block.timestamp);
         assertEq(price, _price);
+    }
+
+    function setStableAssetWithChecks(address _asset, bool _isStableAsset, BaseOracle _oracle) public {
+        _oracle.setStableAsset(_asset, _isStableAsset);
+        assertEq(_oracle.stableAssets(_asset), _isStableAsset);
+    }
+
+    function setDisputePeriodWithChecks(address _base, uint256 _period, DisputableOracle _oracle) public {
+        _oracle.setDisputePeriod(_base, _period);
+        assertEq(_oracle.disputePeriod(_base), _period);
     }
 }
