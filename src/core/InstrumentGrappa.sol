@@ -492,22 +492,22 @@ contract InstrumentGrappa is Grappa {
     }
 
     function _parseBreachDetail(uint256 _instrumentId, uint32 _barrierId) internal view returns (BreachDetail memory details) {
-        BreachDetail memory _details;
         (uint16 _barrierPCT, BarrierObservationFrequencyType _observationFrequency,, BarrierExerciseType _exerciseType) =
             getDetailFromBarrierId(_barrierId);
-        _details.barrierPCT = _barrierPCT;
-        _details.exerciseType = _exerciseType;
         (uint64 _period,,,, Option[] memory _options) = getDetailFromInstrumentId(_instrumentId);
-        _details.period = _period;
         (, uint40 _productId, uint64 _expiry,,) = TokenIdUtil.parseTokenId(_options[0].tokenId);
-        _details.expiry = _expiry;
         (address _oracle,, address _underlying,, address _strike,,,) = getDetailFromProductId(_productId);
-        _details.oracle = _oracle;
-        _details.underlying = _underlying;
-        _details.strike = _strike;
         uint256 _frequency = convertBarrierObservationFrequencyType(_observationFrequency);
-        _details.frequency = _frequency;
-        return _details;
+        return BreachDetail({
+            barrierPCT: _barrierPCT,
+            exerciseType: _exerciseType,
+            period: _period,
+            expiry: _expiry,
+            oracle: _oracle,
+            underlying: _underlying,
+            strike: _strike,
+            frequency: _frequency
+        });
     }
 
     function _handleBarrierChecks(
