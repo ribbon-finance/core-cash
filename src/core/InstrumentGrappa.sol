@@ -524,18 +524,36 @@ contract InstrumentGrappa is Grappa {
             }
         } else if (_exerciseType == BarrierExerciseType.CONTINUOUS) {
             // At least one update at or before expiry
-            if (_updates.length < 1) {
-                revert GP_MissingBarrierUpdate();
-            }
-            uint256 lastTimestamp = _updates[_updates.length - 1];
-            if (lastTimestamp > _expiry) {
-                revert GP_MissingBarrierUpdate();
-            }
-        } else if (_exerciseType == BarrierExerciseType.DISCRETE) {
             for (uint256 i = 0; i < _updates.length; i++) {
-                if (_updates[i] != _creationTimestamp + (i + 1) * _frequency) {
-                    revert GP_InvalidBarrierUpdate();
+                if (_updates[i] <= _expiry) {
+                    return;
                 }
+            }
+            revert GP_InvalidBarrierUpdate();
+        } else if (_exerciseType == BarrierExerciseType.DISCRETE) {
+            uint256 nextExpectedUpdate = _creationTimestamp + _frequency;
+            uint256 i = 0;
+
+            while (nextExpectedUpdate <= _expiry) {
+                // Search for nextExpectedUpdate in _updates
+                bool found = false;
+
+                for (; i < _updates.length; i++) {
+                    if (_updates[i] == nextExpectedUpdate) {
+                        found = true;
+                        i++; // Increment i for the next loop
+                        break;
+                    } else if (_updates[i] > nextExpectedUpdate) {
+                        // _updates are in ascending order - if we find a greater value the expected value is missing
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    revert GP_MissingBarrierUpdate();
+                }
+
+                nextExpectedUpdate += _frequency;
             }
         } else {
             revert GP_InvalidBarrierExerciseType();
