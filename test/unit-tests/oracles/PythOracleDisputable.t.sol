@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -8,26 +7,20 @@ import {OracleHelper} from "./OracleHelper.sol";
 
 import {PythOracleDisputable} from "../../../src/core/oracles/PythOracleDisputable.sol";
 
-import {MockERC20} from "../../mocks/MockERC20.sol";
-import {MockOracle} from "../../mocks/MockOracle.sol";
-import "pyth-sdk-solidity/MockPyth.sol";
-
-import "../../../src/config/enums.sol";
-import "../../../src/config/types.sol";
 import "../../../src/config/constants.sol";
 import "../../../src/core/oracles/errors.sol";
 
 contract PythOracleDisputableTest is OracleHelper {
     PythOracleDisputable private oracle;
     uint64 public immutable initialTimestamp = 100;
-    uint256 private constant expiryToTest = 50;
+    uint64 private constant expiryToTest = 50;
     uint256 private constant disputedPrice = 3000 * UNIT;
 
     function setUp() public {
         oracle = new PythOracleDisputable(address(this), PYTH, COMBINED_PRICE_FEEDS, COMBINED_ADDRESSES);
         vm.warp(initialTimestamp);
     }
-    
+
     // #maxDisputePeriod
 
     function testMaxDisputePeriod() public {
@@ -36,7 +29,7 @@ contract PythOracleDisputableTest is OracleHelper {
 
     // #disputePrice
 
-    function testDisputePriceWithOwner() public {
+    function testDisputePrice() public {
         setDisputePeriodWithChecks(WETH, MAX_DISPUTE_PERIOD - 1, oracle);
         setPriceBackupWithChecks(WETH, expiryToTest, disputedPrice - 1, oracle);
 
@@ -45,6 +38,23 @@ contract PythOracleDisputableTest is OracleHelper {
 
         assertEq(price, disputedPrice);
         assertEq(isFinalized, true);
+    }
+
+    function testDisputePriceMultipleTimes() public {
+        setDisputePeriodWithChecks(WETH, MAX_DISPUTE_PERIOD - 1, oracle);
+        setPriceBackupWithChecks(WETH, expiryToTest, disputedPrice - 1, oracle);
+
+        oracle.disputePrice(WETH, expiryToTest, disputedPrice);
+        (uint256 price, bool isFinalized) = oracle.getPriceAtTimestamp(WETH, USDC, expiryToTest);
+
+        assertEq(price, disputedPrice);
+        assertEq(isFinalized, true);
+
+        oracle.disputePrice(WETH, expiryToTest, disputedPrice + 1);
+        (uint256 priceNew, bool isFinalizedNew) = oracle.getPriceAtTimestamp(WETH, USDC, expiryToTest);
+
+        assertEq(priceNew, disputedPrice + 1);
+        assertEq(isFinalizedNew, true);
     }
 
     function testDisputePriceWithoutOwnerReverts() public {
@@ -109,6 +119,21 @@ contract PythOracleDisputableTest is OracleHelper {
         assertEq(oracle.isPriceFinalized(USDC, expiryToTest), true);
     }
 
+    function testIsFinalizedIsFalseForNonStableAssetIfDisputePeriodNotOver() public {
+        setDisputePeriodWithChecks(WETH, MAX_DISPUTE_PERIOD - 1, oracle);
+        defaultReportPrice(disputedPrice, expiryToTest, oracle);
+        vm.warp(block.timestamp + (oracle.disputePeriod(WETH) - 1));
+        assertEq(oracle.isPriceFinalized(WETH, expiryToTest), false);
+
+    }
+
+    function testIsFinalizedIsTrueForNonStableAssetIfDisputePeriodOver() public {
+        setDisputePeriodWithChecks(WETH, MAX_DISPUTE_PERIOD - 1, oracle);
+        defaultReportPrice(disputedPrice, expiryToTest, oracle);
+        vm.warp(block.timestamp + (oracle.disputePeriod(WETH) + 1));
+        assertEq(oracle.isPriceFinalized(WETH, expiryToTest), true);
+    }
+
     function testIsFinalizedForStableAssetWithoutDisputePeriodReverts() public {
         setStableAssetWithChecks(USDC, true, oracle);
         vm.expectRevert(OC_DisputePeriodNotSet.selector);
@@ -123,5 +148,4 @@ contract PythOracleDisputableTest is OracleHelper {
         setDisputePeriodWithChecks(WETH, MAX_DISPUTE_PERIOD - 1, oracle);
         assertEq(oracle.isPriceFinalized(WETH, expiryToTest), true);
     }
-
 }

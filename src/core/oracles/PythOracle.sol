@@ -134,14 +134,14 @@ contract PythOracle is IOracle, BaseOracle {
      * @dev Reference taken from pyth's example https://github.com/pyth-network/pyth-crosschain/blob/71ce45698b4580b97e90d1d20cad8c4493e2b799/target_chains/ethereum/examples/oracle_swap/contract/src/OracleSwap.sol#L93
      * @param price pyth price struct to be converted
      */
-    function _toPriceWithUnitDecimals(PythStructs.Price memory _price) private pure returns (uint256 price) {
+    function _toPriceWithUnitDecimals(PythStructs.Price memory _price) internal pure returns (uint256 price) {
         if (_price.price < 0 || _price.expo > 0 || _price.expo < -255) {
             revert PY_PythPriceConversionError();
         }
 
         uint8 priceDecimals = uint8(uint32(-1 * _price.expo));
 
-        if (UNIT_DECIMALS - priceDecimals >= 0) {
+        if (UNIT_DECIMALS >= priceDecimals) {
             return uint256(uint64(_price.price)) * 10 ** uint32(UNIT_DECIMALS - priceDecimals);
         } else {
             return uint256(uint64(_price.price)) / 10 ** uint32(priceDecimals - UNIT_DECIMALS);

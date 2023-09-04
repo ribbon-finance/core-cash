@@ -5,13 +5,6 @@ import {OracleHelper} from "./OracleHelper.sol";
 
 import {PythInstrumentOracleDisputable} from "../../../src/core/oracles/PythInstrumentOracleDisputable.sol";
 
-import {MockERC20} from "../../mocks/MockERC20.sol";
-import {MockOracle} from "../../mocks/MockOracle.sol";
-import "pyth-sdk-solidity/MockPyth.sol";
-
-import "../../../src/config/enums.sol";
-import "../../../src/config/types.sol";
-import "../../../src/config/constants.sol";
 import "../../../src/core/oracles/errors.sol";
 
 contract PythInstrumentOracleDisputableTest is OracleHelper {
@@ -38,7 +31,6 @@ contract PythInstrumentOracleDisputableTest is OracleHelper {
         }
         vm.deal(NON_OWNER, 1 ether);
         vm.prank(NON_OWNER);
-        // This is as if we want to update the price for USDC, WETH and WBTC but only pass WETH as the underlyer
         vm.expectRevert("Ownable: caller is not the owner");
         oracle.reportPrice{value: 1 wei}(
             dummyPythUpdateData,
@@ -95,7 +87,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper {
         assertEq(oracle.barrierUpdates(singleInstrumentIds[0], singleBarrierIds[0], 0), block.timestamp - 1);
     }
 
-    function testUpdateBarrierSingleSubsequentUpdate() public {
+    function testUpdateBarrierSingleSequentialUpdates() public {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
@@ -121,7 +113,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper {
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 0), block.timestamp - 1);
     }
 
-    function testUpdateBarrierMultipleSubsequentUpdate() public {
+    function testUpdateBarrierMultipleSequentialUpdates() public {
         (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
         address[] memory underlyers = new address[](1);
         underlyers[0] = (WETH);
@@ -138,7 +130,7 @@ contract PythInstrumentOracleDisputableTest is OracleHelper {
         assertEq(oracle.barrierUpdates(doubleInstrumentIds[1], doubleBarrierIds[1], 1), block.timestamp - 1);
     }
 
-    function testUpdateBarrierMultipleMixedUpdate() public {
+    function testUpdateBarrierMixedSequentialUpdates() public {
         (uint256[] memory singleInstrumentIds, uint32[] memory singleBarrierIds) = getInstrumentAndBarrierIds(1);
         (uint256[] memory doubleInstrumentIds, uint32[] memory doubleBarrierIds) = getInstrumentAndBarrierIds(2);
         address[] memory underlyers = new address[](1);

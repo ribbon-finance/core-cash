@@ -147,7 +147,7 @@ abstract contract BaseOracle is Ownable {
         if (_baseDecimals == UNIT_DECIMALS) {
             price = _basePrice;
         } else if (_baseDecimals > UNIT_DECIMALS) {
-            // Loosing precision, just keep first {UNIT_DECIMALS} and drop remainder
+            // Losing precision, just keep first {UNIT_DECIMALS} and drop remainder
             uint8 diff = _baseDecimals - UNIT_DECIMALS;
             price = _basePrice / (10 ** diff);
         } else if (_baseDecimals < UNIT_DECIMALS) {

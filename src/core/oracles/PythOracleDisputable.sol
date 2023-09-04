@@ -37,10 +37,10 @@ contract PythOracleDisputable is PythOracle, DisputableOracle {
         override(BaseOracle, DisputableOracle)
         returns (bool)
     {
+        if (disputePeriod[_base] == 0) revert OC_DisputePeriodNotSet();
         if (stableAssets[_base]) {
             return true;
         }
-        if (disputePeriod[_base] == 0) revert OC_DisputePeriodNotSet();
         HistoricalPrice memory entry = historicalPrices[_base][_timestamp];
         if (entry.reportAt == 0) return false;
 
