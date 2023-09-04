@@ -11,7 +11,7 @@ import {PythOracle} from "../../../src/core/oracles/PythOracle.sol";
 import "pyth-sdk-solidity/IPyth.sol";
 import "pyth-sdk-solidity/PythStructs.sol";
 
-abstract contract OracleHelper is Test {
+contract OracleHelper is Test {
     // Addresses
     address public constant PYTH = 0x4305FB66699C3B2702D4d05CF36551390A4c69C6;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;

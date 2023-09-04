@@ -53,6 +53,9 @@ error GP_Not_Authorized_Engine();
 /// @dev barrier update necessary for breach checking missing
 error GP_MissingBarrierUpdate();
 
+/// @dev barrier update for discrete barrier does not match frequency
+error GP_InvalidBarrierUpdate();
+
 /// @dev barrier logic implemented based on defined BarrierExerciseType enums
 error GP_InvalidBarrierExerciseType();
 
