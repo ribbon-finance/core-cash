@@ -27,7 +27,7 @@ contract PythInstrumentOracleDisputable is PythOracleDisputable, InstrumentOracl
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * This function can be used to report a price and update a barrier in a single transaction. It is privileged since it involves a barrier update.
+     * This function can be used to report a price and update a barrier breach in a single transaction. It is privileged since it involves a barrier breach update.
      * @param _pythUpdateData Pyth update data for the assets to report a price for
      * @param _priceIds Pyth price feed IDs (https://pyth.network/developers/price-feed-ids) to be updated, and should match those parsed from _pythUpdateData
      * @param _timestamp The timestamp to write the price and barrier update for
@@ -54,7 +54,7 @@ contract PythInstrumentOracleDisputable is PythOracleDisputable, InstrumentOracl
      * Updates the breach timestamp of a barrier. It is public because we may need to update a barrier when the underlying price has already been reported.
      * @param _instrumentIds Array of Grappa intrumentIds to be updated
      * @param _barrierIds Array of Grappa barrierIds to be updated
-     * @param _timestamp The timestamp at which an update occurs. This could be a barrier breach, or just a general observation.
+     * @param _timestamp The timestamp at which the barrier breach occurs.
      * @param _barrierUnderlyerAddresses We use this as a sanity check to ensure all barrier updates have a price set for these corresponding addresses.
      * The price of the underlyer and strike asset at this timestamp should be used to verify.
      */
@@ -75,13 +75,8 @@ contract PythInstrumentOracleDisputable is PythOracleDisputable, InstrumentOracl
             if (data.reportAt == 0) revert OC_PriceNotReported();
         }
         for (uint256 i = 0; i < _barrierIds.length; i++) {
-            uint256[] memory updates = barrierUpdates[_instrumentIds[i]][_barrierIds[i]];
-            if (updates.length > 0) {
-                uint256 lastTimestamp = updates[updates.length - 1];
-                if (_timestamp < lastTimestamp) revert IO_InvalidTimestamp();
-            }
-            barrierUpdates[_instrumentIds[i]][_barrierIds[i]].push(_timestamp);
-            emit BarrierUpdated(_instrumentIds[i], _barrierIds[i], _timestamp);
+            barrierBreaches[_instrumentIds[i]][_barrierIds[i]] = _timestamp;
+            emit BarrierBreachUpdated(_instrumentIds[i], _barrierIds[i], _timestamp);
         }
     }
 }

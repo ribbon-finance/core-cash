@@ -124,7 +124,6 @@ contract PythOracleDisputableTest is OracleHelper {
         defaultReportPrice(disputedPrice, expiryToTest, oracle);
         vm.warp(block.timestamp + (oracle.disputePeriod(WETH) - 1));
         assertEq(oracle.isPriceFinalized(WETH, expiryToTest), false);
-
     }
 
     function testIsFinalizedIsTrueForNonStableAssetIfDisputePeriodOver() public {
