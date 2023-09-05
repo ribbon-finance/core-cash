@@ -49,7 +49,6 @@ contract InstrumentGrappa is Grappa {
         address strike;
         uint256 frequency;
         uint256 initialSpotPrice;
-        uint256 barrierBreachThreshold;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -486,13 +485,13 @@ contract InstrumentGrappa is Grappa {
 
     function _parseBreachDetail(uint256 _instrumentId, uint32 _barrierId) internal view returns (BreachDetail memory details) {
         (uint16 _barrierPCT, BarrierObservationFrequencyType _observationFrequency,, BarrierExerciseType _exerciseType) =
-            getDetailFromBarrierId(_barrierId);
+            this.getDetailFromBarrierId(_barrierId);
         (uint64 _period,,,, Option[] memory _options) = getDetailFromInstrumentId(_instrumentId);
-        (, uint40 _productId, uint64 _expiry,,) = TokenIdUtil.parseTokenId(_options[0].tokenId);
+        (, uint40 _productId, uint64 _expiry,,) = _options[0].tokenId.parseTokenId();
         (address _oracle,, address _underlying,, address _strike,,,) = getDetailFromProductId(_productId);
         uint256 _frequency = convertBarrierObservationFrequencyType(_observationFrequency);
         uint256 _initialSpotPrice = getInitialSpotPrice(_instrumentId);
-        uint256 _barrierBreachThreshold = _initialSpotPrice.mulDivUp(_barrierPCT, UNIT_PERCENTAGE);
+
         return BreachDetail({
             barrierPCT: _barrierPCT,
             exerciseType: _exerciseType,
@@ -502,8 +501,7 @@ contract InstrumentGrappa is Grappa {
             underlying: _underlying,
             strike: _strike,
             frequency: _frequency,
-            initialSpotPrice: _initialSpotPrice,
-            barrierBreachThreshold: _barrierBreachThreshold
+            initialSpotPrice: _initialSpotPrice
         });
     }
 
@@ -512,6 +510,7 @@ contract InstrumentGrappa is Grappa {
         view
         returns (uint256[] memory breaches)
     {
+        uint256 barrierBreachThreshold = _details.initialSpotPrice.mulDivUp(_details.barrierPCT, UNIT_PERCENTAGE);
         uint256[] memory _breaches;
         uint256 breachTimestamp;
         uint256 breachPrice;
@@ -525,9 +524,9 @@ contract InstrumentGrappa is Grappa {
                 breachTimestamp = IInstrumentOracle(_details.oracle).barrierBreaches(_instrumentId, _barrierId);
             }
 
-            if (breachTimestamp != 0) {
+            if (breachTimestamp != 0 && breachTimestamp <= _details.expiry) {
                 breachPrice = _getOraclePrice(_details.oracle, _details.underlying, _details.strike, breachTimestamp);
-                isBreached = _comparePricesForBarrierBreach(_details.barrierBreachThreshold, breachPrice, _details.barrierPCT);
+                isBreached = _comparePricesForBarrierBreach(barrierBreachThreshold, breachPrice, _details.barrierPCT);
                 if (isBreached) {
                     _breaches[0] = breachTimestamp;
                 }
@@ -544,9 +543,10 @@ contract InstrumentGrappa is Grappa {
             for (uint256 i = 0; i < observationCount; i++) {
                 uint256 currTimestamp = creationTimestamp + (i + 1) * _details.frequency;
                 uint256 currPrice = _getOraclePrice(_details.oracle, _details.underlying, _details.strike, currTimestamp);
-                isBreached = _comparePricesForBarrierBreach(_details.barrierBreachThreshold, currPrice, _details.barrierPCT);
+                isBreached = _comparePricesForBarrierBreach(barrierBreachThreshold, currPrice, _details.barrierPCT);
                 if (isBreached) {
                     _breaches[j] = currTimestamp;
+                    j++;
                 }
             }
             return _breaches;
