@@ -18,6 +18,11 @@ interface IGrappa {
             uint8 collateralDecimals
         );
 
+    function getDetailFromTokenId(uint256 _tokenId)
+        external
+        pure
+        returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 shortStrike);
+
     function checkEngineAccess(uint256 _tokenId, address _engine) external view;
 
     function checkEngineAccessAndTokenId(uint256 _tokenId, address _engine) external view;

@@ -50,6 +50,9 @@ error GP_BadLeveragePCT();
 /// @dev burn or mint can only be called by corresponding engine.
 error GP_Not_Authorized_Engine();
 
+/// @dev barrier logic implemented based on defined BarrierExerciseType enums
+error GP_InvalidBarrierExerciseType();
+
 /* ---------------------------- *
  *   Common BaseEngine Errors   *
  * ---------------------------  */

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {ChainlinkOracle} from "./ChainlinkOracle.sol";
+import {PythOracle} from "./PythOracle.sol";
 
 // abstract
 import {BaseOracle} from "./abstract/BaseOracle.sol";
@@ -12,17 +12,18 @@ import "./errors.sol";
 import "../../config/constants.sol";
 
 /**
- * @title ChainlinkOracleDisputable
- * @author antoncoding
- * @dev chainlink oracle that can be dispute by the owner
+ * @title PythOracleDisputable
+ * @dev pyth oracle that can be dispute by the owner
  */
-contract ChainlinkOracleDisputable is ChainlinkOracle, DisputableOracle {
-    constructor(address _owner) ChainlinkOracle(_owner) {}
+contract PythOracleDisputable is PythOracle, DisputableOracle {
+    constructor(address _owner, address _pyth, bytes32[] memory _initialFeedIds, address[] memory _initialBaseAddresses)
+        PythOracle(_owner, _pyth, _initialFeedIds, _initialBaseAddresses)
+    {}
 
     /**
-     * @dev return the maximum dispute period for the oracle
+     * @dev this function is intended to be overridden and should remain "view".
      */
-    function maxDisputePeriod() external view override(ChainlinkOracle, DisputableOracle) returns (uint256) {
+    function maxDisputePeriod() external view override(PythOracle, DisputableOracle) returns (uint256) {
         return MAX_DISPUTE_PERIOD;
     }
 
