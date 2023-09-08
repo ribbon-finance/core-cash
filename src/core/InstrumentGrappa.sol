@@ -544,28 +544,6 @@ contract InstrumentGrappa is Grappa {
         return 0;
     }
 
-    /**
-     * @dev add an entry to array of InstrumentComponentBalance
-     * @param _payouts existing payout array
-     * @param _index index in coupons or options array
-     * @param _isCoupon whether it is coupon (true) or option (false)
-     * @param _tokenId token id
-     * @param _payout new payout
-     */
-    function _addToPayouts(
-        InstrumentComponentBalance[] memory _payouts,
-        uint8 _index,
-        bool _isCoupon,
-        uint256 _tokenId,
-        uint256 _payout
-    ) internal pure returns (InstrumentComponentBalance[] memory) {
-        if (_payout == 0) return _payouts;
-
-        _payouts.append(InstrumentComponentBalance(_index, _isCoupon, _tokenId, _payout.toUint80()));
-
-        return _payouts;
-    }
-
     function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint256[] memory) {
         InstrumentIdUtil.BreachDetail memory details = _parseBreachDetail(_instrumentId, _barrierId);
 
@@ -585,7 +563,7 @@ contract InstrumentGrappa is Grappa {
         for (uint256 i = 0; i < nObs; i++) {
             if (ts == 0) break;
             uint256 price = _getOraclePrice(details.oracle, details.underlying, details.strike, ts);
-            if (_isBreached(details.breachThreshold, price, details.barrierPCT)) breaches[i] = ts;
+            if (details.breachThreshold.isBreached(price, details.barrierPCT)) breaches[i] = ts;
             ts += details.frequency;
         }
 
@@ -615,22 +593,32 @@ contract InstrumentGrappa is Grappa {
         });
     }
 
-    function _isBreached(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
-        internal
-        pure
-        returns (bool isBreached)
-    {
-        if (_barrierPCT < UNIT_PERCENTAGE) {
-            return _comparisonPrice < _barrierBreachThreshold;
-        } else {
-            return _comparisonPrice > _barrierBreachThreshold;
-        }
-    }
-
     function _getOracleInfo(uint256 _instrumentId) internal view returns (uint64, uint64, address, address, address) {
         (,,, uint64 _period,, Option[] memory _options) = getDetailFromInstrumentId(_instrumentId);
         (, uint40 _productId, uint64 _expiry,,) = getDetailFromTokenId(_options[0].tokenId);
         (address _oracle,, address _underlying,, address _strike,,,) = getDetailFromProductId(_productId);
         return (_period, _expiry, _oracle, _underlying, _strike);
+    }
+
+    /**
+     * @dev add an entry to array of InstrumentComponentBalance
+     * @param _payouts existing payout array
+     * @param _index index in coupons or options array
+     * @param _isCoupon whether it is coupon (true) or option (false)
+     * @param _tokenId token id
+     * @param _payout new payout
+     */
+    function _addToPayouts(
+        InstrumentComponentBalance[] memory _payouts,
+        uint8 _index,
+        bool _isCoupon,
+        uint256 _tokenId,
+        uint256 _payout
+    ) internal pure returns (InstrumentComponentBalance[] memory) {
+        if (_payout == 0) return _payouts;
+
+        _payouts.append(InstrumentComponentBalance(_index, _isCoupon, _tokenId, _payout.toUint80()));
+
+        return _payouts;
     }
 }

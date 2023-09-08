@@ -325,6 +325,18 @@ library InstrumentIdUtil {
         expiry = TokenIdUtil.parseExpiry(_instrument.options[0].tokenId);
     }
 
+    function isBreached(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
+        internal
+        pure
+        returns (bool isBreached)
+    {
+        if (_barrierPCT < UNIT_PERCENTAGE) {
+            return _comparisonPrice < _barrierBreachThreshold;
+        } else {
+            return _comparisonPrice > _barrierBreachThreshold;
+        }
+    }
+
     /**
      * @notice derive frequency denominated in seconds
      * @param frequency barrier observation frequency type
