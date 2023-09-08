@@ -30,7 +30,7 @@ contract InstrumentGrappaHarness is InstrumentGrappa {
         pure
         returns (bool isBreached)
     {
-        return _comparePricesForBarrierBreach(_barrierBreachThreshold, _comparisonPrice, _barrierPCT);
+        return _isBreached(_barrierBreachThreshold, _comparisonPrice, _barrierPCT);
     }
 }
 
@@ -313,7 +313,7 @@ contract InstrumentGrappaTest is Test {
         instrumentGrappaHarness.exposedGetBarrierBreaches(1, 1, mockDetails);
     }
 
-    // #_comparePricesForBarrierBreach
+    // #_isBreached
 
     function testComparePricesForBarrierBreach() public {
         // At the barrier is not a breach
