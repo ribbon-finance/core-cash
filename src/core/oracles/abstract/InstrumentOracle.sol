@@ -1,48 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IInstrumentGrappa} from "../../../interfaces/IInstrumentGrappa.sol";
-import "../../../config/errors.sol";
-
-
 abstract contract InstrumentOracle {
+    // instrumentId => barrierId => barrierUpdate
+    // this is used to record the first continuous barrier breach we observe
+    mapping(uint256 => mapping(uint32 => uint256)) public barrierBreaches;
 
-    IInstrumentGrappa public instrumentGrappa;
-
-    // instrumentId => barrierId => breachTimestamp
-    mapping(uint256 => mapping(uint32 => uint256)) public americanBarrierBreaches;
-
-    event AmericanBarrierUpdated(uint256 instrumentId, uint32 barrierId, uint256 timestamp);
-
-    event InstrumentGrappaUpdated(address newInstrumentGrappa);
-
-    constructor(address _instrumentGrappaAddress) {
-        // solhint-disable-next-line reason-string
-        if (_instrumentGrappaAddress == address(0)) revert OC_ZeroAddress();
-        instrumentGrappa = IInstrumentGrappa(_instrumentGrappaAddress);
-    }
+    event BarrierBreachUpdated(uint256 instrumentId, uint32 barrierId, uint256 timestamp);
 
     /**
-     * Updates the breach timestamp of an american barrier 
-     * @param _instrumentId Grappa intrumentId
-     * @param _barrierId Grappa barrierId
-     * @param _timestamp The timestamp at which the breach occured. The price of the underlyer and strike asset at the provided timestamp should be used to verify.
+     * Updates the breach timestamp of a barrier
+     * @param _instrumentIds Array of Grappa instrumentIds to be updated
+     * @param _barrierIds Array of Grappa barrierIds to be updated
+     * @param _timestamp The timestamp at which the barrier breach occurs.
+     * @param _barrierUnderlyerAddresses We use this as a sanity check to ensure all barrier updates have a price set for these corresponding addresses.
      */
-    function updateAmericanBarrier(uint256 _instrumentId, uint32 _barrierId, uint256 _timestamp) external virtual;
-
-    /**
-     * @dev Checks if a given barrier has been breached
-     * @param _instrumentId Grappa intrumentId
-     * @param _barrierId Grappa barrierId
-     * @return isBreached When barrier < 100 pct, true if price drops below the barrier price and false otherwise. Vice versa for when barrier > 100 pct.
-     * @return isFinalized Checks if underlying and strike asset's prices used to check the barrier breach have been finalized.
-     */
-    function isBarrierBreached(uint256 _instrumentId, uint32 _barrierId) external virtual view returns (bool isBreached, bool isFinalized);
-
-    /**
-     * @dev Set the InstrumentGrappa contract for this oracle
-     * @param _instrumentGrappa The address of the InstrumentGrappa contract
-     */
-    function setInstrumentGrappa(address _instrumentGrappa) external virtual;
-
+    function updateBarrier(
+        uint256[] calldata _instrumentIds,
+        uint32[] calldata _barrierIds,
+        uint256 _timestamp,
+        address[] calldata _barrierUnderlyerAddresses
+    ) public virtual;
 }

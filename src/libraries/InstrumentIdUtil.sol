@@ -61,7 +61,7 @@ import "./TokenIdUtil.sol";
  *  | barrierPCT (16 bits) | observationFrequency (8 bits)  | triggerType (4 bits)  | exerciseType (4 bits) *
  *  * -------------------- | ------------------------------ | --------------------- | --------------------- |
  *
- *  barrierPCT: percentage of the barrier relative to initial spot price
+ *  barrierPCT: percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
  *  observationFrequency: frequency of barrier observations (ObservationFrequencyType)
  *  triggerType: trigger type of the barrier (BarrierTriggerType)
  *  exerciseType: exercise type of the barrier (BarrierExerciseType)
@@ -258,7 +258,7 @@ library InstrumentIdUtil {
 
     /**
      * @notice calculate barrier id. See table above for barrier Id
-     * @param barrierPCT percentage of the barrier relative to initial spot price
+     * @param barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @param observationFrequency frequency of barrier observations
      * @param triggerType trigger type of the barrier
      * @param exerciseType exercise type of the barrier
@@ -279,7 +279,7 @@ library InstrumentIdUtil {
     /**
      * @notice derive barrierPCT, observationFrequency, barrierType, exerciseType from barrierId
      * @param barrierId barrier id
-     * @return barrierPCT percentage of the barrier relative to initial spot price
+     * @return barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @return observationFrequency frequency of barrier observations
      * @return triggerType trigger type of the barrier
      * @return exerciseType exercise type of the barrier

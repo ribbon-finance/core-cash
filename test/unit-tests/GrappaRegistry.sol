@@ -183,7 +183,7 @@ contract RegisterOracleTest is Test {
     }
 
     function testCannotRegistryOralceWithDisputePeriodTooLong() public {
-        MockOracle(oracle).setViewDisputePeriod(1 days);
+        MockOracle(oracle).setViewDisputePeriod(MAX_DISPUTE_PERIOD + 1);
         vm.expectRevert(GP_BadOracle.selector);
         grappa.registerOracle(oracle);
     }
