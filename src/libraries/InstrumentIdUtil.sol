@@ -328,7 +328,7 @@ library InstrumentIdUtil {
     function isBreached(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
         internal
         pure
-        returns (bool isBreached)
+        returns (bool)
     {
         if (_barrierPCT < UNIT_PERCENTAGE) {
             return _comparisonPrice < _barrierBreachThreshold;
