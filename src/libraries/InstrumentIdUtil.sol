@@ -103,6 +103,19 @@ library InstrumentIdUtil {
         BarrierExerciseType exerciseType;
     }
 
+    /// @dev internal struct to bypass stack too deep issues
+    struct BreachDetail {
+        uint16 barrierPCT;
+        uint256 breachThreshold;
+        BarrierExerciseType exerciseType;
+        uint64 period;
+        uint64 expiry;
+        address oracle;
+        address underlying;
+        address strike;
+        uint256 frequency;
+    }
+
     /**
      * @notice serialize instrument
      * @param _instrument InstrumentExtended struct
