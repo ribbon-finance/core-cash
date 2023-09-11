@@ -24,6 +24,15 @@ contract InstrumentIdUtilTester {
         uint256 result = InstrumentIdUtil.convertBarrierObservationFrequencyType(frequency);
         return result;
     }
+
+    function isBreached(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
+        external
+        pure
+        returns (bool)
+    {
+        bool result = InstrumentIdUtil.isBreached(_barrierBreachThreshold, _comparisonPrice, _barrierPCT);
+        return result;
+    }
 }
 
 /**
@@ -91,5 +100,15 @@ contract InstrumentIdLibTest is Test {
     function testExpiry() public {
         Instrument memory sInstrument = InstrumentIdUtil.serialize(instrument);
         assertEq(tester.getExpiry(sInstrument), expiry);
+    }
+
+    function testIsBreached() public {
+        // At the barrier is not a breach
+        assertEq(tester.isBreached(1000, 1000, uint16(120 * 10 ** UNIT_PERCENTAGE_DECIMALS)), false);
+        // Just over barrier is a breach
+        assertEq(tester.isBreached(1000, 1001, uint16(120 * 10 ** UNIT_PERCENTAGE_DECIMALS)), true);
+        // Test the other side
+        assertEq(tester.isBreached(1000, 1000, uint16(80 * 10 ** UNIT_PERCENTAGE_DECIMALS)), false);
+        assertEq(tester.isBreached(1000, 999, uint16(80 * 10 ** UNIT_PERCENTAGE_DECIMALS)), true);
     }
 }

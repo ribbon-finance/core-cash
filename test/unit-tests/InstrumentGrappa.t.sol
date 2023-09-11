@@ -25,14 +25,6 @@ contract InstrumentGrappaHarness is InstrumentGrappa {
     {
         return _getBarrierBreaches(_instrumentId, _barrierId, _details);
     }
-
-    function exposedComparePricesForBarrierBreach(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
-        public
-        pure
-        returns (bool isBreached)
-    {
-        return InstrumentIdUtil.isBreached(_barrierBreachThreshold, _comparisonPrice, _barrierPCT);
-    }
 }
 
 contract InstrumentGrappaTest is Test {
@@ -314,29 +306,5 @@ contract InstrumentGrappaTest is Test {
         // Missing the update at 500
         vm.expectRevert(OC_PriceNotReported.selector);
         instrumentGrappaHarness.exposedGetBarrierBreaches(1, 1, mockDetails);
-    }
-
-    // #_isBreached
-
-    function testComparePricesForBarrierBreach() public {
-        // At the barrier is not a breach
-        assertEq(
-            instrumentGrappaHarness.exposedComparePricesForBarrierBreach(1000, 1000, uint16(120 * 10 ** UNIT_PERCENTAGE_DECIMALS)),
-            false
-        );
-        // Just over barrier is a breach
-        assertEq(
-            instrumentGrappaHarness.exposedComparePricesForBarrierBreach(1000, 1001, uint16(120 * 10 ** UNIT_PERCENTAGE_DECIMALS)),
-            true
-        );
-        // Test the other side
-        assertEq(
-            instrumentGrappaHarness.exposedComparePricesForBarrierBreach(1000, 1000, uint16(80 * 10 ** UNIT_PERCENTAGE_DECIMALS)),
-            false
-        );
-        assertEq(
-            instrumentGrappaHarness.exposedComparePricesForBarrierBreach(1000, 999, uint16(80 * 10 ** UNIT_PERCENTAGE_DECIMALS)),
-            true
-        );
     }
 }
