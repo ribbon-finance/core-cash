@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import {Grappa} from "../../src/core/Grappa.sol";
 import {InstrumentGrappa} from "../../src/core/InstrumentGrappa.sol";
 import {TokenIdUtil} from "../../src/libraries/TokenIdUtil.sol";
+import {InstrumentIdUtil} from "../../src/libraries/InstrumentIdUtil.sol";
 import {PythInstrumentOracleDisputable} from "../../src/core/oracles/PythInstrumentOracleDisputable.sol";
 
 import "../../src/config/enums.sol";
@@ -17,7 +18,7 @@ import "../../src/config/errors.sol";
 contract InstrumentGrappaHarness is InstrumentGrappa {
     constructor(address _optionToken, address _instrumentToken) InstrumentGrappa(_optionToken, _instrumentToken) {}
 
-    function exposedGetBarrierBreaches(uint256 _instrumentId, uint32 _barrierId, BreachDetail memory _details)
+    function exposedGetBarrierBreaches(uint256 _instrumentId, uint32 _barrierId, InstrumentIdUtil.BreachDetail memory _details)
         public
         view
         returns (uint256[] memory breaches)
@@ -30,7 +31,7 @@ contract InstrumentGrappaHarness is InstrumentGrappa {
         pure
         returns (bool isBreached)
     {
-        return _isBreached(_barrierBreachThreshold, _comparisonPrice, _barrierPCT);
+        return InstrumentIdUtil.isBreached(_barrierBreachThreshold, _comparisonPrice, _barrierPCT);
     }
 }
 
@@ -59,7 +60,7 @@ contract InstrumentGrappaTest is Test {
     // EUROPEAN
 
     function testGetBarrierBreachEuropeanPastBarrier() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -68,7 +69,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 90 * UNIT
         });
         vm.mockCall(
             address(oracle),
@@ -81,7 +82,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachEuropeanNotPastBarrier() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -90,7 +91,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 110 * UNIT
         });
         vm.mockCall(
             address(oracle),
@@ -103,7 +104,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachEuropeanAtBarrier() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -112,7 +113,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 110 * UNIT
         });
         vm.mockCall(
             address(oracle),
@@ -125,7 +126,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachEuropeanWithoutExpiryPriceReverts() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -134,7 +135,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 110 * UNIT
         });
         vm.expectRevert(OC_PriceNotReported.selector);
         instrumentGrappaHarness.exposedGetBarrierBreaches(1, 1, mockDetails);
@@ -143,7 +144,7 @@ contract InstrumentGrappaTest is Test {
     // CONTINUOUS
 
     function testGetBarrierBreachContinuousNoBreach() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -152,7 +153,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 110 * UNIT
         });
         vm.mockCall(address(oracle), abi.encodeWithSelector(oracle.barrierBreaches.selector, 1, 1), abi.encode(0));
         uint256[] memory result = instrumentGrappaHarness.exposedGetBarrierBreaches(1, 1, mockDetails);
@@ -161,7 +162,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachContinuousBreach() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -170,7 +171,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 110 * UNIT
         });
         vm.mockCall(address(oracle), abi.encodeWithSelector(oracle.barrierBreaches.selector, 1, 1), abi.encode(150));
         vm.mockCall(
@@ -184,7 +185,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachContinuousBreachAfterExpiryIgnored() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -193,7 +194,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 110 * UNIT
         });
         vm.mockCall(address(oracle), abi.encodeWithSelector(oracle.barrierBreaches.selector, 1, 1), abi.encode(550));
         vm.mockCall(
@@ -207,7 +208,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachContinuousUnderlyingPriceNotBreachedIgnored() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -216,7 +217,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 1,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 90 * UNIT
         });
         vm.mockCall(address(oracle), abi.encodeWithSelector(oracle.barrierBreaches.selector, 1, 1), abi.encode(150));
         vm.mockCall(
@@ -232,7 +233,7 @@ contract InstrumentGrappaTest is Test {
     // DISCRETE
 
     function testGetBarrierBreachDiscreteNoBreach() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.DISCRETE,
             period: 400,
@@ -241,7 +242,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 300,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 90 * UNIT
         });
         vm.mockCall(
             address(oracle),
@@ -254,7 +255,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachDiscreteMultipleBreaches() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.DISCRETE,
             period: 400,
@@ -263,7 +264,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 100,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 90 * UNIT
         });
         vm.mockCall(
             address(oracle),
@@ -288,11 +289,13 @@ contract InstrumentGrappaTest is Test {
         uint256[] memory result = instrumentGrappaHarness.exposedGetBarrierBreaches(1, 1, mockDetails);
         assertEq(result.length, 4);
         assertEq(result[0], 200);
-        assertEq(result[1], 500);
+        assertEq(result[1], 0);
+        assertEq(result[2], 0);
+        assertEq(result[3], 500);
     }
 
     function testGetBarrierBreachDiscreteWithoutExpiryPriceReverts() public {
-        InstrumentGrappa.BreachDetail memory mockDetails = InstrumentGrappa.BreachDetail({
+        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.DISCRETE,
             period: 400,
@@ -301,7 +304,7 @@ contract InstrumentGrappaTest is Test {
             underlying: WETH,
             strike: USDC,
             frequency: 200,
-            initialSpotPrice: 100 * UNIT
+            breachThreshold: 90 * UNIT
         });
         vm.mockCall(
             address(oracle),
