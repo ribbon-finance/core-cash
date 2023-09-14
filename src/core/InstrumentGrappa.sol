@@ -516,15 +516,18 @@ contract InstrumentGrappa is Grappa {
      * @param _instrumentId  instrument id
      * @param _barrierId barrier id
      */
-    function _getPayoutPerBarrier(uint256 _instrumentId, uint32 _barrierId) internal pure returns (uint256) {
+    function _getPayoutPerBarrier(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint256) {
         if (_barrierId == 0) return 1;
-        // (,, BarrierTriggerType triggerType, ) = parseBarrierId(_barrierId);
-        // bool breached = true; //TODO: get whether was breached -- get the length
-        //
-        // bool knockedOut = _breached && _triggerType == BarrierTriggerType.KNOCK_OUT;
-        // if(knockedOut) return 0;
-        // bool notKnockedIn = !_breached && _triggerType == BarrierTriggerType.KNOCK_IN;
-        // if(notKnockedIn) return 0;
+        (,, BarrierTriggerType triggerType,) = getDetailFromBarrierId(_barrierId);
+
+        (bool breached,) = InstrumentIdUtil.isBreached(
+            _getBarrierBreaches(_instrumentId, _barrierId, _parseBreachDetail(_instrumentId, _barrierId))
+        );
+
+        bool knockedOut = breached && triggerType == BarrierTriggerType.KNOCK_OUT;
+        if (knockedOut) return 0;
+        bool notKnockedIn = !breached && triggerType == BarrierTriggerType.KNOCK_IN;
+        if (notKnockedIn) return 0;
 
         return 1;
     }
@@ -537,8 +540,11 @@ contract InstrumentGrappa is Grappa {
     function _getSettleTime(uint256 _instrumentId) internal view returns (uint256) {
         (,, uint40 autocallId,,,) = getDetailFromInstrumentId(_instrumentId);
         (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
-        uint256[] memory breaches = _getBarrierBreaches(_instrumentId, barrierId, _parseBreachDetail(_instrumentId, barrierId));
-        return breaches[0] != 0 ? breaches[0] : getExpiry(_instrumentId);
+        (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(
+            _getBarrierBreaches(_instrumentId, barrierId, _parseBreachDetail(_instrumentId, barrierId))
+        );
+
+        return breached ? ts : getExpiry(_instrumentId);
     }
 
     function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId, InstrumentIdUtil.BreachDetail memory _details)

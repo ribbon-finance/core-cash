@@ -337,6 +337,13 @@ library InstrumentIdUtil {
         }
     }
 
+    function isBreached(uint256[] memory _timestamps) internal pure returns (bool, uint256) {
+        for (uint256 i = 0; i < _timestamps.length; i++) {
+            if (_timestamps[i] != 0) return (true, _timestamps[i]);
+        }
+        return (false, 0);
+    }
+
     /**
      * @notice derive frequency denominated in seconds
      * @param frequency barrier observation frequency type
