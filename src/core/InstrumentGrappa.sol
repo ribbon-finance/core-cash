@@ -430,7 +430,7 @@ contract InstrumentGrappa is Grappa {
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
 
-        // Apply early termination
+        // Early termination if applicable
         uint256 settleTime = _getSettleTime(_instrumentId);
 
         uint256[] memory breachTimestamps = _getBarrierBreaches(_instrumentId, barrierId);
@@ -447,7 +447,7 @@ contract InstrumentGrappa is Grappa {
             }
         }
 
-        uint256 installment = (couponPCT * getInitialSpotPrice(_instrumentId) / HUNDRED_PCT) / numInstallements;
+        uint256 totalCoupon = (couponPCT * getInitialSpotPrice(_instrumentId) / HUNDRED_PCT);
 
         /**
          * NONE:            normal coupon
@@ -462,11 +462,11 @@ contract InstrumentGrappa is Grappa {
          *                  (holder of instrument token) will get the inverse of payout for long autocall swap
          */
         if (couponType == CouponType.NONE) {
-            payout = numPayouts * installment;
+            payout = numPayouts * totalCoupon / numInstallements;
         } else if (couponType == CouponType.FIXED || couponType == CouponType.PHOENIX) {
-            payout = (numInstallements - numPayouts) * installment;
+            payout = (numInstallements - numPayouts) * totalCoupon / numInstallements;
         } else {
-            payout = (numInstallements - latestPayout) * installment;
+            payout = (numInstallements - latestPayout) * totalCoupon / numInstallements;
         }
     }
 
