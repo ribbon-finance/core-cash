@@ -43,14 +43,15 @@ import "./TokenIdUtil.sol";
  *
  * Coupon ID (64 bits total) =
  *
- *  * ------------------- | ---------------------- | -------------------- | -------------------- |
- *  | couponPCT (16 bits) | isPartitioned (8 bits) | couponType (8 bits)  | barrierId (32 bits)  *
- *  * ------------------- | ---------------------- | -------------------- | -------------------- |
+ *  * ------------------- | ---------------------- | -------------------- | -------------------- | ------------------- |
+ *  | couponPCT (16 bits) | isPartitioned (1 bits) | couponType (4 bits)  | barrierId (32 bits)  | reserved (11 bits)  *
+ *  * ------------------- | ---------------------- | -------------------- | -------------------- | ------------------- |
  *
  *  couponPCT: coupon percentage of notional
  *  isPartitioned: whether coupons broken up into installments (ONLY AUTOCALL COUPONS)
  *  couponType: coupon type (!NONE ONLY AUTOCALL COUPONS)
  *  barrierId: id of the barrier
+ *  reserved: reserved for future storage
  *
  *
  * Barrier ID (32 bits total) =
@@ -76,7 +77,7 @@ library InstrumentIdUtil {
 
     struct Coupon {
         uint16 couponPCT;
-        uint8 isPartitioned;
+        bool isPartitioned;
         CouponType couponType;
         Barrier barrier;
     }
@@ -159,13 +160,14 @@ library InstrumentIdUtil {
      * @param barrierId barrier id
      * @return couponId coupon id
      */
-    function getCouponId(uint16 couponPCT, uint8 isPartitioned, CouponType couponType, uint32 barrierId)
+    function getCouponId(uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
         internal
         pure
         returns (uint64 couponId)
     {
         unchecked {
-            couponId = (uint64(couponPCT) << 48) + (uint64(isPartitioned) << 40) + (uint64(couponType) << 32) + uint64(barrierId);
+            couponId = (uint64(couponPCT) << 48) + (uint64(isPartitioned ? 1 : 0) << 47) + (uint64(couponType) << 43)
+                + (uint64(barrierId) << 11);
         }
     }
 
@@ -181,7 +183,7 @@ library InstrumentIdUtil {
     function parseCouponId(uint256 coupons, uint256 index)
         internal
         pure
-        returns (uint16 couponPCT, uint8 isPartitioned, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         uint64 couponId;
 
@@ -204,14 +206,14 @@ library InstrumentIdUtil {
     function parseCouponId(uint64 couponId)
         internal
         pure
-        returns (uint16 couponPCT, uint8 isPartitioned, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             couponPCT := shr(48, couponId)
-            isPartitioned := and(shr(40, couponId), 0xFF)
-            couponType := and(shr(32, couponId), 0xFF)
-            barrierId := couponId
+            isPartitioned := and(shr(47, couponId), 0x1)
+            couponType := and(shr(43, couponId), 0xF)
+            barrierId := shr(11, couponId)
         }
     }
 

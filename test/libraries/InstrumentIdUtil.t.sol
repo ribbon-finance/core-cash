@@ -42,7 +42,7 @@ contract InstrumentIdLibTest is Test {
         barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
         instrument.autocall = barrier;
-        instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
+        instrument.coupons.push(InstrumentIdUtil.Coupon(5, false, CouponType(uint8(3)), barrier));
         instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
     }
 
@@ -55,7 +55,7 @@ contract InstrumentIdLibTest is Test {
 
         uint64[] memory coupons = new uint64[](1);
 
-        coupons[0] = InstrumentIdUtil.getCouponId(5, 6, CouponType(uint8(3)), barrierId);
+        coupons[0] = InstrumentIdUtil.getCouponId(5, false, CouponType(uint8(3)), barrierId);
 
         assertEq(sInstrument.coupons, InstrumentIdUtil.getCoupons(coupons));
         assertEq(sInstrument.options[0].participationPCT, 5);

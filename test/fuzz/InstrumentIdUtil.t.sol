@@ -40,14 +40,13 @@ contract InstrumentIdUtilTest is Test {
         assertGt(id, 0);
     }
 
-    function testCouponIdFormatAndParseAreMirrored(uint16 couponPCT, uint8 isPartitioned, uint8 couponType, uint32 barrierId)
+    function testCouponIdFormatAndParseAreMirrored(uint16 couponPCT, bool isPartitioned, uint8 couponType, uint32 barrierId)
         public
     {
-        vm.assume(isPartitioned < 256);
         vm.assume(couponType <= uint8(type(CouponType).max));
 
         uint64 id = InstrumentIdUtil.getCouponId(couponPCT, isPartitioned, CouponType(couponType), barrierId);
-        (uint16 _couponPCT, uint8 _isPartitioned, CouponType _couponType, uint32 _barrierId) = InstrumentIdUtil.parseCouponId(id);
+        (uint16 _couponPCT, bool _isPartitioned, CouponType _couponType, uint32 _barrierId) = InstrumentIdUtil.parseCouponId(id);
 
         assertEq(couponPCT, _couponPCT);
         assertEq(isPartitioned, _isPartitioned);
@@ -55,18 +54,16 @@ contract InstrumentIdUtilTest is Test {
         assertEq(barrierId, _barrierId);
     }
 
-    function testCouponIdGetAndParseAreMirrored(uint256 couponPCT, uint256 isPartitioned, uint8 couponType, uint256 barrierId)
+    function testCouponIdGetAndParseAreMirrored(uint256 couponPCT, bool isPartitioned, uint8 couponType, uint256 barrierId)
         public
     {
-        vm.assume(isPartitioned < 256);
         vm.assume(couponType <= uint8(type(CouponType).max));
 
-        uint64 id =
-            InstrumentIdUtil.getCouponId(uint16(couponPCT), uint8(isPartitioned), CouponType(couponType), uint32(barrierId));
-        (uint16 _couponPCT, uint8 _isPartitioned, CouponType _couponType, uint32 _barrierId) = InstrumentIdUtil.parseCouponId(id);
+        uint64 id = InstrumentIdUtil.getCouponId(uint16(couponPCT), isPartitioned, CouponType(couponType), uint32(barrierId));
+        (uint16 _couponPCT, bool _isPartitioned, CouponType _couponType, uint32 _barrierId) = InstrumentIdUtil.parseCouponId(id);
 
         assertEq(uint16(couponPCT), _couponPCT);
-        assertEq(uint16(isPartitioned), _isPartitioned);
+        assertEq(isPartitioned, _isPartitioned);
         assertEq(uint8(couponType), uint8(_couponType));
         assertEq(uint32(barrierId), _barrierId);
     }
@@ -84,10 +81,10 @@ contract InstrumentIdUtilTest is Test {
         uint256 _coupons = InstrumentIdUtil.getCoupons(coupons);
 
         for (uint256 i = 0; i < len; i++) {
-            (uint16 couponPCT, uint8 isPartitioned, CouponType couponType, uint32 barrierId) =
+            (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId) =
                 InstrumentIdUtil.parseCouponId(_coupons, i);
 
-            (uint16 _couponPCT, uint8 _isPartitioned, CouponType _couponType, uint32 _barrierId) =
+            (uint16 _couponPCT, bool _isPartitioned, CouponType _couponType, uint32 _barrierId) =
                 InstrumentIdUtil.parseCouponId(coupons[i]);
 
             assertEq(couponPCT, _couponPCT);
