@@ -521,9 +521,14 @@ contract InstrumentGrappa is Grappa {
     function _getSettleTime(uint256 _instrumentId) internal view returns (uint256) {
         (,, uint40 autocallId,,,) = getDetailFromInstrumentId(_instrumentId);
         (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
+
+        uint256 expiry = getExpiry(_instrumentId);
+
+        if (barrierId == 0) return expiry;
+
         (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(_getBarrierBreaches(_instrumentId, barrierId));
 
-        return breached ? ts : getExpiry(_instrumentId);
+        return breached ? ts : expiry;
     }
 
     function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint256[] memory) {
