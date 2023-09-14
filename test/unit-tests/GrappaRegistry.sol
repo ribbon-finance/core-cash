@@ -256,7 +256,7 @@ contract RegisterInstrumentTest is Test {
             InstrumentIdUtil.Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
         barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
-        instrument.autocall = InstrumentIdUtil.Autocall(true, barrier);
+        instrument.autocall = barrier;
         instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
         instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
         // console.log(instrument.options);
