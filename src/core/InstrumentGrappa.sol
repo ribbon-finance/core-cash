@@ -151,7 +151,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromCouponId(uint64 _coupon)
         external
         pure
-        returns (uint16 couponPCT, uint8 isPartitioned, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         return InstrumentIdUtil.parseCouponId(_coupon);
     }
@@ -164,7 +164,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromCouponId(uint256 _coupons, uint256 _index)
         public
         pure
-        returns (uint16 couponPCT, uint8 isPartitioned, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         return InstrumentIdUtil.parseCouponId(_coupons, _index);
     }
@@ -216,7 +216,7 @@ contract InstrumentGrappa is Grappa {
      * @param _couponType coupon type
      * @param _barrierId barrier id
      */
-    function getCouponId(uint16 _couponPCT, uint8 _isPartitioned, CouponType _couponType, uint32 _barrierId)
+    function getCouponId(uint16 _couponPCT, bool _isPartitioned, CouponType _couponType, uint32 _barrierId)
         external
         pure
         returns (uint64 id)
@@ -398,7 +398,7 @@ contract InstrumentGrappa is Grappa {
      *
      */
     function _getPayoutPerCoupon(uint256 _coupons, uint256 _index) internal pure returns (uint256) {
-        (uint16 couponPCT, uint8 isPartitioned, CouponType couponType, uint32 barrierId) = getDetailFromCouponId(_coupons, _index);
+        (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId) = getDetailFromCouponId(_coupons, _index);
 
         (uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType) =
             getDetailFromBarrierId(barrierId);

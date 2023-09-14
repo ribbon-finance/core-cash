@@ -257,7 +257,7 @@ contract RegisterInstrumentTest is Test {
         barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
         instrument.autocall = barrier;
-        instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
+        instrument.coupons.push(InstrumentIdUtil.Coupon(5, false, CouponType(uint8(3)), barrier));
         instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
         // console.log(instrument.options);
         id = grappa.getInstrumentId(instrument);
