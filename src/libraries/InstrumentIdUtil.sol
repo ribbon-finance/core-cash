@@ -339,7 +339,7 @@ library InstrumentIdUtil {
 
     function isBreached(uint256[] memory _obsTimestamps) internal pure returns (bool, uint256) {
         for (uint256 i = 0; i < _obsTimestamps.length; i++) {
-            if (_obsTimestamps[i] != 0) return (true, _obsTimestamps[i]);
+            if (_obsTimestamps[i] > 0) return (true, _obsTimestamps[i]);
         }
         return (false, 0);
     }
@@ -436,5 +436,12 @@ library InstrumentIdUtil {
                 ++i;
             }
         }
+    }
+
+    /**
+     * @dev Make sure that the instrument makes sense
+     */
+    function isValidInstrumentToRegister(InstrumentIdUtil.InstrumentExtended memory _instrument) internal pure {
+        // TODO
     }
 }

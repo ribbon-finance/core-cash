@@ -71,7 +71,7 @@ contract InstrumentGrappa is Grappa {
      * @return id instrument ID
      */
     function registerInstrument(InstrumentIdUtil.InstrumentExtended calldata _instrument) external returns (uint256 id) {
-        _isValidInstrumentToRegister(_instrument);
+        InstrumentIdUtil.isValidInstrumentToRegister(_instrument);
 
         Instrument memory sInstrument = InstrumentIdUtil.serialize(_instrument);
 
@@ -320,17 +320,6 @@ contract InstrumentGrappa is Grappa {
         instrumentToken.burnGrappaOnly(_account, _instrumentId, _amount);
     }
 
-    /* =====================================
-     *          Internal Functions
-     * ====================================**/
-
-    /**
-     * @dev make sure that the instrument make sense
-     */
-    function _isValidInstrumentToRegister(InstrumentIdUtil.InstrumentExtended memory _instrument) internal pure {
-        // TODO
-    }
-
     /**
      * @dev calculate the payout for one option
      *
@@ -419,6 +408,10 @@ contract InstrumentGrappa is Grappa {
         }
     }
 
+    /* =====================================
+     *          Internal Functions
+     * ====================================**/
+
     /**
      * @dev calculate the payout for one coupon unit
      *
@@ -446,17 +439,15 @@ contract InstrumentGrappa is Grappa {
         uint256 latestPayout = 0;
 
         for (uint8 i; i < breachTimestamps.length; i++) {
-            uint256 barrierPayout = _getPayoutPerBarrier(barrierId, breachTimestamps[i] > 0);
             if (breachTimestamps[i] > settleTime) break;
 
-            if (barrierPayout == 1) {
+            if (_getPayoutPerBarrier(barrierId, breachTimestamps[i] > 0) == 1) {
                 numPayouts += 1;
                 latestPayout = i;
             }
         }
 
-        uint256 initialSpotPrice = getInitialSpotPrice(_instrumentId);
-        uint256 installment = (couponPCT * initialSpotPrice / HUNDRED_PCT) / numInstallements;
+        uint256 installment = (couponPCT * getInitialSpotPrice(_instrumentId) / HUNDRED_PCT) / numInstallements;
 
         /**
          * NONE:            normal coupon
@@ -477,8 +468,6 @@ contract InstrumentGrappa is Grappa {
         } else {
             payout = (numInstallements - latestPayout) * installment;
         }
-
-        return 0;
     }
 
     /**
@@ -512,7 +501,7 @@ contract InstrumentGrappa is Grappa {
      * @param _barrierId barrier id
      * @param _breached breached
      */
-    function _getPayoutPerBarrier(uint32 _barrierId, bool _breached) internal view returns (uint256) {
+    function _getPayoutPerBarrier(uint32 _barrierId, bool _breached) internal pure returns (uint256) {
         if (_barrierId == 0) return 1;
         (,, BarrierTriggerType triggerType,) = getDetailFromBarrierId(_barrierId);
 
