@@ -337,9 +337,9 @@ library InstrumentIdUtil {
         }
     }
 
-    function isBreached(uint256[] memory _timestamps) internal pure returns (bool, uint256) {
-        for (uint256 i = 0; i < _timestamps.length; i++) {
-            if (_timestamps[i] != 0) return (true, _timestamps[i]);
+    function isBreached(uint256[] memory _obsTimestamps) internal pure returns (bool, uint256) {
+        for (uint256 i = 0; i < _obsTimestamps.length; i++) {
+            if (_obsTimestamps[i] != 0) return (true, _obsTimestamps[i]);
         }
         return (false, 0);
     }

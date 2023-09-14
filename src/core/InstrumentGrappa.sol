@@ -130,7 +130,7 @@ contract InstrumentGrappa is Grappa {
         options = _instrument.options;
     }
 
-    function getInitialSpotPrice(uint256 _instrumentId) external view returns (uint256 price) {
+    function getInitialSpotPrice(uint256 _instrumentId) public view returns (uint256 price) {
         (uint64 _period, uint64 _expiry, address _oracle, address _underlying, address _strike) = _getOracleInfo(_instrumentId);
         return _getOraclePrice(_oracle, _underlying, _strike, _expiry - _period);
     }
@@ -280,7 +280,7 @@ contract InstrumentGrappa is Grappa {
      * @return breaches Array of timestamps representing barrier breaches. Empty if barrier was not breached.
      */
     function getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId) external view returns (uint256[] memory breaches) {
-        return _getBarrierBreaches(_instrumentId, _barrierId, _parseBreachDetail(_instrumentId, _barrierId));
+        return _getBarrierBreaches(_instrumentId, _barrierId);
     }
 
     /**
@@ -440,30 +440,23 @@ contract InstrumentGrappa is Grappa {
         // Apply early termination
         uint256 settleTime = _getSettleTime(_instrumentId);
 
-        // Breach[] memory breaches = getBarrierBreaches(_instrumentId, barrierId);
-        uint256 _numInstallements = 0; //breaches.length;
-
-        // TODO require num installements match
-
-        uint256 initialSpotPrice = 0; // TODO
-        uint256 installment = (couponPCT * initialSpotPrice / HUNDRED_PCT) / _numInstallements;
+        uint256[] memory breachTimestamps = _getBarrierBreaches(_instrumentId, barrierId);
 
         uint256 numPayouts = 0;
         uint256 latestPayout = 0;
 
-        for (uint8 i; i < _numInstallements;) {
-            uint256 barrierPayout = 0; // TODO take into account breach
-            // if(breach.timestamp > settleTime) break; // TODO
+        for (uint8 i; i < breachTimestamps.length; i++) {
+            uint256 barrierPayout = _getPayoutPerBarrier(barrierId, breachTimestamps[i] > 0);
+            if(breachTimestamps[i] > settleTime) break;
 
             if (barrierPayout == 1) {
                 numPayouts += 1;
                 latestPayout = i;
             }
-
-            unchecked {
-                ++i;
-            }
         }
+
+        uint256 initialSpotPrice = getInitialSpotPrice(_instrumentId);
+        uint256 installment = (couponPCT * initialSpotPrice / HUNDRED_PCT) / numInstallements;
 
         /**
          * NONE:            normal coupon
@@ -480,9 +473,9 @@ contract InstrumentGrappa is Grappa {
         if (couponType == CouponType.NONE) {
             payout = numPayouts * installment;
         } else if (couponType == CouponType.FIXED || couponType == CouponType.PHOENIX) {
-            payout = (_numInstallements - numPayouts) * installment;
+            payout = (numInstallements - numPayouts) * installment;
         } else {
-            payout = (_numInstallements - latestPayout) * installment;
+            payout = (numInstallements - latestPayout) * installment;
         }
 
         return 0;
@@ -505,28 +498,29 @@ contract InstrumentGrappa is Grappa {
 
         // Apply participation
         payout = payout.mulDivDown(_option.participationPCT, HUNDRED_PCT);
+
+        (bool breached,) = InstrumentIdUtil.isBreached(
+            _getBarrierBreaches(_instrumentId, _option.barrierId)
+        );
+
         // Apply barrier
-        payout = payout * _getPayoutPerBarrier(_instrumentId, _option.barrierId);
+        payout = payout * _getPayoutPerBarrier(_option.barrierId, breached);
 
         return payout;
     }
 
     /**
      * @dev Return 0 or 1
-     * @param _instrumentId  instrument id
      * @param _barrierId barrier id
+     * @param _breached breached
      */
-    function _getPayoutPerBarrier(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint256) {
+    function _getPayoutPerBarrier(uint32 _barrierId, bool _breached) internal view returns (uint256) {
         if (_barrierId == 0) return 1;
         (,, BarrierTriggerType triggerType,) = getDetailFromBarrierId(_barrierId);
 
-        (bool breached,) = InstrumentIdUtil.isBreached(
-            _getBarrierBreaches(_instrumentId, _barrierId, _parseBreachDetail(_instrumentId, _barrierId))
-        );
-
-        bool knockedOut = breached && triggerType == BarrierTriggerType.KNOCK_OUT;
+        bool knockedOut = _breached && triggerType == BarrierTriggerType.KNOCK_OUT;
         if (knockedOut) return 0;
-        bool notKnockedIn = !breached && triggerType == BarrierTriggerType.KNOCK_IN;
+        bool notKnockedIn = !_breached && triggerType == BarrierTriggerType.KNOCK_IN;
         if (notKnockedIn) return 0;
 
         return 1;
@@ -541,35 +535,37 @@ contract InstrumentGrappa is Grappa {
         (,, uint40 autocallId,,,) = getDetailFromInstrumentId(_instrumentId);
         (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
         (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(
-            _getBarrierBreaches(_instrumentId, barrierId, _parseBreachDetail(_instrumentId, barrierId))
+            _getBarrierBreaches(_instrumentId, barrierId)
         );
 
         return breached ? ts : getExpiry(_instrumentId);
     }
 
-    function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId, InstrumentIdUtil.BreachDetail memory _details)
+    function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId)
         internal
         view
         returns (uint256[] memory)
     {
-        uint256 nObs = _details.exerciseType == BarrierExerciseType.DISCRETE ? _details.period / _details.frequency : 1;
+        InstrumentIdUtil.BreachDetail memory details = _parseBreachDetail(_instrumentId, _barrierId);
+
+        uint256 nObs = details.exerciseType == BarrierExerciseType.DISCRETE ? details.period / details.frequency : 1;
         uint256[] memory breaches = new uint256[](nObs);
 
         uint256 ts;
 
-        if (_details.exerciseType == BarrierExerciseType.EUROPEAN) {
-            ts = _details.expiry;
-        } else if (_details.exerciseType == BarrierExerciseType.CONTINUOUS) {
-            ts = IInstrumentOracle(_details.oracle).barrierBreaches(_instrumentId, _barrierId);
+        if (details.exerciseType == BarrierExerciseType.EUROPEAN) {
+            ts = details.expiry;
+        } else if (details.exerciseType == BarrierExerciseType.CONTINUOUS) {
+            ts = IInstrumentOracle(details.oracle).barrierBreaches(_instrumentId, _barrierId);
         } else {
-            ts = _details.expiry - _details.period + _details.frequency;
+            ts = details.expiry - details.period + details.frequency;
         }
 
         for (uint256 i = 0; i < nObs; i++) {
-            if (ts == 0 || ts > _details.expiry) break;
-            uint256 price = _getOraclePrice(_details.oracle, _details.underlying, _details.strike, ts);
-            if (_details.breachThreshold.isBreached(price, _details.barrierPCT)) breaches[i] = ts;
-            ts += _details.frequency;
+            if (ts == 0 || ts > details.expiry) break;
+            uint256 price = _getOraclePrice(details.oracle, details.underlying, details.strike, ts);
+            if (details.breachThreshold.isBreached(price, details.barrierPCT)) breaches[i] = ts;
+            ts += details.frequency;
         }
 
         return breaches;
