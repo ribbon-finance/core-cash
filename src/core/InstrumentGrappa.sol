@@ -431,14 +431,14 @@ contract InstrumentGrappa is Grappa {
      */
     function _getPayoutPerCoupon(uint256 _instrumentId, uint256 _coupons, uint256 _index)
         internal
-        pure
+        view
         returns (uint256 payout)
     {
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
 
         // Apply early termination
-        uint64 settleTime = _getSettleTime(_instrumentId);
+        uint256 settleTime = _getSettleTime(_instrumentId);
 
         // Breach[] memory breaches = getBarrierBreaches(_instrumentId, barrierId);
         uint256 _numInstallements = 0; //breaches.length;
@@ -534,15 +534,11 @@ contract InstrumentGrappa is Grappa {
      * @param _instrumentId  instrument id
      * @return settleTime timestamp of settlement
      */
-    function _getSettleTime(uint256 _instrumentId) internal pure returns (uint64) {
-        //TODO
-
-        // (,,uint40 autocallId,,) = getDetailFromInstrumentId(_instrumentId);
-        // (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
-        // (bool breached, bool finalized, bool timestamp) = IInstrumentOracle(oracles[instruments[_instrumentId].oracleId]).isBarrierBreached(_instrumentId, barrierId)
-        // uint256 expiry = breached && finalized ? timestamp : getExpiry(_instrumentId);
-        // IS REVERSE CHECK
-        return 0;
+    function _getSettleTime(uint256 _instrumentId) internal view returns (uint256) {
+        (,, uint40 autocallId,,,) = getDetailFromInstrumentId(_instrumentId);
+        (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
+        uint256[] memory breaches = _getBarrierBreaches(_instrumentId, barrierId, _parseBreachDetail(_instrumentId, barrierId));
+        return breaches[0] != 0 ? breaches[0] : getExpiry(_instrumentId);
     }
 
     function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId, InstrumentIdUtil.BreachDetail memory _details)
