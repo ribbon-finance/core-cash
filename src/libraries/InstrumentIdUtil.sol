@@ -56,14 +56,13 @@ import "./TokenIdUtil.sol";
  *
  * Barrier ID (32 bits total) =
  *
- *  * -------------------- | ------------------------------ | --------------------- | --------------------- |
- *  | barrierPCT (16 bits) | observationFrequency (8 bits)  | triggerType (4 bits)  | exerciseType (4 bits) *
- *  * -------------------- | ------------------------------ | --------------------- | --------------------- |
+ *  * -------------------- | ------------------------------ | --------------------- |
+ *  | barrierPCT (16 bits) | observationFrequency (8 bits)  | triggerType (8 bits)  |
+ *  * -------------------- | ------------------------------ | --------------------- |
  *
  *  barrierPCT: percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
  *  observationFrequency: frequency of barrier observations (ObservationFrequencyType)
  *  triggerType: trigger type of the barrier (BarrierTriggerType)
- *  exerciseType: exercise type of the barrier (BarrierExerciseType)
  *
  */
 
@@ -98,7 +97,6 @@ library InstrumentIdUtil {
         uint16 barrierPCT;
         BarrierObservationFrequencyType observationFrequency;
         BarrierTriggerType triggerType;
-        BarrierExerciseType exerciseType;
     }
 
     /**
@@ -255,45 +253,35 @@ library InstrumentIdUtil {
      * @param barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @param observationFrequency frequency of barrier observations
      * @param triggerType trigger type of the barrier
-     * @param exerciseType exercise type of the barrier
      * @return barrierId barrier id
      */
-    function getBarrierId(
-        uint16 barrierPCT,
-        BarrierObservationFrequencyType observationFrequency,
-        BarrierTriggerType triggerType,
-        BarrierExerciseType exerciseType
-    ) internal pure returns (uint32 barrierId) {
+    function getBarrierId(uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType)
+        internal
+        pure
+        returns (uint32 barrierId)
+    {
         unchecked {
-            barrierId = (uint32(barrierPCT) << 16) + (uint32(observationFrequency) << 8) + (uint32(triggerType) << 4)
-                + uint32(exerciseType);
+            barrierId = (uint32(barrierPCT) << 16) + (uint32(observationFrequency) << 8) + uint32(triggerType);
         }
     }
 
     /**
-     * @notice derive barrierPCT, observationFrequency, barrierType, exerciseType from barrierId
+     * @notice derive barrierPCT, observationFrequency, barrierType from barrierId
      * @param barrierId barrier id
      * @return barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @return observationFrequency frequency of barrier observations
      * @return triggerType trigger type of the barrier
-     * @return exerciseType exercise type of the barrier
      */
     function parseBarrierId(uint32 barrierId)
         internal
         pure
-        returns (
-            uint16 barrierPCT,
-            BarrierObservationFrequencyType observationFrequency,
-            BarrierTriggerType triggerType,
-            BarrierExerciseType exerciseType
-        )
+        returns (uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             barrierPCT := shr(16, barrierId)
             observationFrequency := and(shr(8, barrierId), 0xFF)
-            triggerType := and(shr(4, barrierId), 0xF)
-            exerciseType := and(barrierId, 0xF)
+            triggerType := and(barrierId, 0xFF)
         }
     }
 
@@ -302,7 +290,7 @@ library InstrumentIdUtil {
      * @param frequency barrier observation frequency type
      * @return frequency denominated in seconds
      */
-    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
+    function getFrequency(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
         if (frequency == BarrierObservationFrequencyType.ONE_DAY) {
             return (1 days);
         } else if (frequency == BarrierObservationFrequencyType.ONE_WEEK) {
@@ -327,17 +315,28 @@ library InstrumentIdUtil {
     }
 
     /**
+     * @notice Derive barrier exercise type
+     * @param frequency barrier observation frequency type
+     * @return barrier exercise type
+     */
+    function getExerciseType(BarrierObservationFrequencyType frequency) internal pure returns (BarrierExerciseType) {
+        if (frequency == BarrierObservationFrequencyType.NONE) {
+            return BarrierExerciseType.EUROPEAN;
+        } else if (frequency == BarrierObservationFrequencyType.ONE_SECOND) {
+            return BarrierExerciseType.CONTINUOUS;
+        } else {
+            return BarrierExerciseType.DISCRETE;
+        }
+    }
+
+    /**
      * @notice serialize autocall struct
      * @param _autocall Autocall struct
      * @return autocallId
      */
     function serializeAutocall(Autocall memory _autocall) private pure returns (uint40 autocallId) {
-        uint32 autocallBarrierId = getBarrierId(
-            _autocall.barrier.barrierPCT,
-            _autocall.barrier.observationFrequency,
-            _autocall.barrier.triggerType,
-            _autocall.barrier.exerciseType
-        );
+        uint32 autocallBarrierId =
+            getBarrierId(_autocall.barrier.barrierPCT, _autocall.barrier.observationFrequency, _autocall.barrier.triggerType);
         autocallId = getAutocallId(_autocall.isReverse, autocallBarrierId);
     }
 
@@ -351,12 +350,8 @@ library InstrumentIdUtil {
 
         for (uint8 i; i < _coupons.length;) {
             Coupon memory coupon = _coupons[i];
-            uint32 couponBarrierId = getBarrierId(
-                coupon.barrier.barrierPCT,
-                coupon.barrier.observationFrequency,
-                coupon.barrier.triggerType,
-                coupon.barrier.exerciseType
-            );
+            uint32 couponBarrierId =
+                getBarrierId(coupon.barrier.barrierPCT, coupon.barrier.observationFrequency, coupon.barrier.triggerType);
 
             couponsArr[i] = getCouponId(coupon.couponPCT, coupon.numInstallements, coupon.couponType, couponBarrierId);
             unchecked {
@@ -377,12 +372,8 @@ library InstrumentIdUtil {
 
         for (uint8 i; i < _options.length;) {
             OptionExtended memory option = _options[i];
-            uint32 optionBarrierId = getBarrierId(
-                option.barrier.barrierPCT,
-                option.barrier.observationFrequency,
-                option.barrier.triggerType,
-                option.barrier.exerciseType
-            );
+            uint32 optionBarrierId =
+                getBarrierId(option.barrier.barrierPCT, option.barrier.observationFrequency, option.barrier.triggerType);
 
             options[i] = Option(option.participationPCT, optionBarrierId, option.token);
             unchecked {
