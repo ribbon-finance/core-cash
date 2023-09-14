@@ -29,12 +29,11 @@ import "./TokenIdUtil.sol";
  *
  * Autocall ID (40 bits total) =
  *
- *  * ------------------- | ------------------- |
- *  | isReverse (8 bits)  | barrierId (32 bits) *
- *  * ------------------- | ------------------- |
+ *  * -------------------- |
+ *  | barrierId (32 bits)  *
+ *  * -------------------- |
  *
- *  isReverse: whether it is a reverse autocallable
- *  barrierId: id of the barrier
+ *  barrierId: id of the autocallable barrier
  *
  * Coupons (256 bits total) =
  *
@@ -70,14 +69,9 @@ library InstrumentIdUtil {
     struct InstrumentExtended {
         uint64 period;
         uint8 engineId;
-        Autocall autocall;
+        Barrier autocall;
         Coupon[] coupons;
         OptionExtended[] options;
-    }
-
-    struct Autocall {
-        bool isReverse;
-        Barrier barrier;
     }
 
     struct Coupon {
@@ -144,32 +138,6 @@ library InstrumentIdUtil {
      */
     function getInstrumentId(InstrumentExtended memory _instrument) internal pure returns (uint256 instrumentId) {
         return getInstrumentId(serialize(_instrument));
-    }
-
-    /**
-     * @notice calculate autocall id. See table above for autocallId
-     * @param isReverse whether it is a reverse autocallable
-     * @param barrierId id of the barrier
-     * @return autocallId autocall id
-     */
-    function getAutocallId(bool isReverse, uint32 barrierId) internal pure returns (uint40 autocallId) {
-        unchecked {
-            autocallId = (uint40((isReverse ? 1 : 0)) << 32) + uint40(barrierId);
-        }
-    }
-
-    /**
-     * @notice derive isReverse, barrierId from autocallId
-     * @param autocallId autocall id
-     * @return isReverse whether it is a reverse autocallable
-     * @return barrierId id of the barrier
-     */
-    function parseAutocallId(uint40 autocallId) internal pure returns (bool isReverse, uint32 barrierId) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            isReverse := shr(32, autocallId)
-            barrierId := autocallId
-        }
     }
 
     /**
@@ -334,10 +302,8 @@ library InstrumentIdUtil {
      * @param _autocall Autocall struct
      * @return autocallId
      */
-    function serializeAutocall(Autocall memory _autocall) private pure returns (uint40 autocallId) {
-        uint32 autocallBarrierId =
-            getBarrierId(_autocall.barrier.barrierPCT, _autocall.barrier.observationFrequency, _autocall.barrier.triggerType);
-        autocallId = getAutocallId(_autocall.isReverse, autocallBarrierId);
+    function serializeAutocall(Barrier memory _autocall) private pure returns (uint32 autocallId) {
+        autocallId = getBarrierId(_autocall.barrierPCT, _autocall.observationFrequency, _autocall.triggerType);
     }
 
     /**

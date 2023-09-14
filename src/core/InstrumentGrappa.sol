@@ -127,7 +127,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromInstrumentId(uint256 _instrumentId)
         public
         view
-        returns (uint64 period, uint8 engine, uint40 autocallId, uint256 coupons, Option[] memory options)
+        returns (uint64 period, uint8 engine, uint32 autocallId, uint256 coupons, Option[] memory options)
     {
         Instrument memory _instrument = instruments[_instrumentId];
         period = _instrument.period;
@@ -142,14 +142,6 @@ contract InstrumentGrappa is Grappa {
         (, uint40 productId, uint64 expiry,,) = TokenIdUtil.parseTokenId(options[0].tokenId);
         (address oracle,, address underlying,, address strike,,,) = getDetailFromProductId(productId);
         return _getOraclePrice(oracle, underlying, strike, expiry - period);
-    }
-
-    /**
-     * @dev parse autocall id into composing autocall details
-     * @param _autocallId autocall id
-     */
-    function getDetailFromAutocallId(uint40 _autocallId) public pure returns (bool isReverse, uint32 barrierId) {
-        return InstrumentIdUtil.parseAutocallId(_autocallId);
     }
 
     /**
@@ -218,15 +210,6 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
-     * @dev get autocall id from isReverse, barrierId
-     * @param _isReverse is reverse
-     * @param _barrierId barrier id
-     */
-    function getAutocallId(bool _isReverse, uint32 _barrierId) external pure returns (uint256 id) {
-        id = InstrumentIdUtil.getAutocallId(_isReverse, _barrierId);
-    }
-
-    /**
      * @dev get coupon id from coupon pct, num installments, coupon type, barrier id
      * @param _couponPCT coupon percentage of notional
      * @param _numInstallements number of installments
@@ -289,7 +272,7 @@ contract InstrumentGrappa is Grappa {
         // Settle Instrument
 
         uint8 instrumentEngineId = instruments[_instrumentId].engineId;
-        uint40 autocallId = instruments[_instrumentId].autocallId;
+        uint32 autocallId = instruments[_instrumentId].autocallId;
         uint256 coupons = instruments[_instrumentId].coupons;
         Option[] memory options = instruments[_instrumentId].options;
 
@@ -373,7 +356,7 @@ contract InstrumentGrappa is Grappa {
      */
     function getInstrumentPayout(
         uint8 _instrumentEngineId,
-        uint40 _autocallId,
+        uint32 _autocallId,
         uint256 _coupons,
         Option[] memory _options,
         uint256 _amount

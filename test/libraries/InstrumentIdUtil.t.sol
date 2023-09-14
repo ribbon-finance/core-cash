@@ -41,7 +41,7 @@ contract InstrumentIdLibTest is Test {
             InstrumentIdUtil.Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
         barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
-        instrument.autocall = InstrumentIdUtil.Autocall(true, barrier);
+        instrument.autocall = barrier;
         instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
         instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
     }
@@ -51,7 +51,7 @@ contract InstrumentIdLibTest is Test {
 
         assertEq(sInstrument.period, 1);
         assertEq(sInstrument.engineId, 1);
-        assertEq(sInstrument.autocallId, InstrumentIdUtil.getAutocallId(true, barrierId));
+        assertEq(sInstrument.autocallId, barrierId);
 
         uint64[] memory coupons = new uint64[](1);
 

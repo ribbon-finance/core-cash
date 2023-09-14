@@ -40,22 +40,6 @@ contract InstrumentIdUtilTest is Test {
         assertGt(id, 0);
     }
 
-    function testAutocallIdFormatAndParseAreMirrored(bool isReverse, uint32 barrierId) public {
-        uint40 id = InstrumentIdUtil.getAutocallId(isReverse, barrierId);
-        (bool _isReverse, uint32 _barrierId) = InstrumentIdUtil.parseAutocallId(id);
-
-        assertEq(isReverse, _isReverse);
-        assertEq(barrierId, _barrierId);
-    }
-
-    function testAutocallIdGetAndParseAreMirrored(bool isReverse, uint256 barrierId) public {
-        uint40 id = InstrumentIdUtil.getAutocallId(isReverse, uint32(barrierId));
-        (bool _isReverse, uint32 _barrierId) = InstrumentIdUtil.parseAutocallId(id);
-
-        assertEq(isReverse, _isReverse);
-        assertEq(uint32(barrierId), _barrierId);
-    }
-
     function testCouponIdFormatAndParseAreMirrored(uint16 couponPCT, uint16 numInstallements, uint8 couponType, uint32 barrierId)
         public
     {
