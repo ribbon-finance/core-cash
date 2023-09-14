@@ -447,7 +447,7 @@ contract InstrumentGrappa is Grappa {
 
         for (uint8 i; i < breachTimestamps.length; i++) {
             uint256 barrierPayout = _getPayoutPerBarrier(barrierId, breachTimestamps[i] > 0);
-            if(breachTimestamps[i] > settleTime) break;
+            if (breachTimestamps[i] > settleTime) break;
 
             if (barrierPayout == 1) {
                 numPayouts += 1;
@@ -499,9 +499,7 @@ contract InstrumentGrappa is Grappa {
         // Apply participation
         payout = payout.mulDivDown(_option.participationPCT, HUNDRED_PCT);
 
-        (bool breached,) = InstrumentIdUtil.isBreached(
-            _getBarrierBreaches(_instrumentId, _option.barrierId)
-        );
+        (bool breached,) = InstrumentIdUtil.isBreached(_getBarrierBreaches(_instrumentId, _option.barrierId));
 
         // Apply barrier
         payout = payout * _getPayoutPerBarrier(_option.barrierId, breached);
@@ -534,18 +532,12 @@ contract InstrumentGrappa is Grappa {
     function _getSettleTime(uint256 _instrumentId) internal view returns (uint256) {
         (,, uint40 autocallId,,,) = getDetailFromInstrumentId(_instrumentId);
         (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
-        (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(
-            _getBarrierBreaches(_instrumentId, barrierId)
-        );
+        (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(_getBarrierBreaches(_instrumentId, barrierId));
 
         return breached ? ts : getExpiry(_instrumentId);
     }
 
-    function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId)
-        internal
-        view
-        returns (uint256[] memory)
-    {
+    function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint256[] memory) {
         InstrumentIdUtil.BreachDetail memory details = _parseBreachDetail(_instrumentId, _barrierId);
 
         uint256 nObs = details.exerciseType == BarrierExerciseType.DISCRETE ? details.period / details.frequency : 1;
