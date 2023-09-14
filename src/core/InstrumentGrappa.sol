@@ -184,12 +184,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromBarrierId(uint32 _barrierId)
         public
         pure
-        returns (
-            uint16 barrierPCT,
-            BarrierObservationFrequencyType observationFrequency,
-            BarrierTriggerType triggerType,
-            BarrierExerciseType exerciseType
-        )
+        returns (uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType)
     {
         return InstrumentIdUtil.parseBarrierId(_barrierId);
     }
@@ -198,12 +193,8 @@ contract InstrumentGrappa is Grappa {
      * @dev parse barrier observation frequency type
      * @param _observationFrequency observation frequency enum
      */
-    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType _observationFrequency)
-        public
-        pure
-        returns (uint256 frequency)
-    {
-        frequency = InstrumentIdUtil.convertBarrierObservationFrequencyType(_observationFrequency);
+    function getFrequency(BarrierObservationFrequencyType _observationFrequency) public pure returns (uint256 frequency) {
+        frequency = InstrumentIdUtil.getFrequency(_observationFrequency);
     }
 
     /**
@@ -263,15 +254,13 @@ contract InstrumentGrappa is Grappa {
      * @param _barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @param _observationFrequency frequency of barrier observations
      * @param _triggerType trigger type of the barrier
-     * @param _exerciseType exercise type of the barrier
      */
     function getBarrierId(
         uint16 _barrierPCT,
         BarrierObservationFrequencyType _observationFrequency,
-        BarrierTriggerType _triggerType,
-        BarrierExerciseType _exerciseType
+        BarrierTriggerType _triggerType
     ) external pure returns (uint32 id) {
-        id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
+        id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType);
     }
 
     /**
@@ -429,12 +418,8 @@ contract InstrumentGrappa is Grappa {
         (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
             getDetailFromCouponId(_coupons, _index);
 
-        (
-            uint16 barrierPCT,
-            BarrierObservationFrequencyType observationFrequency,
-            BarrierTriggerType triggerType,
-            BarrierExerciseType exerciseType
-        ) = getDetailFromBarrierId(barrierId);
+        (uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType) =
+            getDetailFromBarrierId(barrierId);
 
         //TODO
 
@@ -484,17 +469,16 @@ contract InstrumentGrappa is Grappa {
     }
 
     function _parseBreachDetail(uint256 _instrumentId, uint32 _barrierId) internal view returns (BreachDetail memory details) {
-        (uint16 _barrierPCT, BarrierObservationFrequencyType _observationFrequency,, BarrierExerciseType _exerciseType) =
-            this.getDetailFromBarrierId(_barrierId);
+        (uint16 _barrierPCT, BarrierObservationFrequencyType _observationFrequency,) = this.getDetailFromBarrierId(_barrierId);
         (uint64 _period,,,, Option[] memory _options) = getDetailFromInstrumentId(_instrumentId);
         (, uint40 _productId, uint64 _expiry,,) = _options[0].tokenId.parseTokenId();
         (address _oracle,, address _underlying,, address _strike,,,) = getDetailFromProductId(_productId);
-        uint256 _frequency = convertBarrierObservationFrequencyType(_observationFrequency);
+        uint256 _frequency = getFrequency(_observationFrequency);
         uint256 _initialSpotPrice = getInitialSpotPrice(_instrumentId);
 
         return BreachDetail({
             barrierPCT: _barrierPCT,
-            exerciseType: _exerciseType,
+            exerciseType: InstrumentIdUtil.getExerciseType(_observationFrequency),
             period: _period,
             expiry: _expiry,
             oracle: _oracle,
