@@ -1,8 +1,12 @@
 {
   "name": "@ribbon-finance/grappa",
   "author": "antoncoding",
-  "contributors": ["chudnov", "spablob", "Sahilgat"],
-  "version": "1.2.0",
+  "contributors": [
+    "chudnov",
+    "spablob",
+    "Sahilgat"
+  ],
+  "version": "1.2.1",
   "description": "option protocol built with forge template",
   "homepage": "https://github.com/ribbon-finance/core-cash",
   "license": "MIT",
