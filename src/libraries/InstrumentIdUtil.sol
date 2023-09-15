@@ -17,13 +17,14 @@ import "./TokenIdUtil.sol";
  *
  * Instrument (368 bits + 256 bits * MAX_OPTION_CONSTRUCTION) =
  *
- *  * ------------------ | ---------------- | -------------------- | ------------------- | --------------------------------------------- |
- *  | engineId (8 bits)  | period (64 bits) | autocallId (40 bits) | coupons (256 bits)  | options (512 bits * MAX_OPTION_CONSTRUCTION)  *
- *  *------------------- | ---------------- | -------------------- | ------------------- | --------------------------------------------- |
+ *  * ------------------ | ---------------- | --------------------- | ---------------- | ------------------ | -------------------------------------------- |
+ *  | oracleId (8 bits)  | engineId (8 bits)|  autocallId (40 bits) | period (64 bits) | coupons (256 bits) | options (512 bits * MAX_OPTION_CONSTRUCTION) *
+ *  *------------------- | ---------------- | --------------------- | ---------------- | ------------------ | -------------------------------------------- | |
  *
+ *  oracleId: id of the engine
  *  engineId: id of the engine
- *  period: duration of instrument
  *  autocallId: id of the autocall
+ *  period: duration of instrument
  *  coupons: packed coupons
  *  options: array of options
  *
@@ -67,33 +68,6 @@ import "./TokenIdUtil.sol";
  */
 
 library InstrumentIdUtil {
-    struct InstrumentExtended {
-        uint64 period;
-        uint8 engineId;
-        Barrier autocall;
-        Coupon[] coupons;
-        OptionExtended[] options;
-    }
-
-    struct Coupon {
-        uint16 couponPCT;
-        bool isPartitioned;
-        CouponType couponType;
-        Barrier barrier;
-    }
-
-    struct OptionExtended {
-        uint16 participationPCT;
-        Barrier barrier;
-        uint256 token;
-    }
-
-    struct Barrier {
-        uint16 barrierPCT;
-        BarrierObservationFrequencyType observationFrequency;
-        BarrierTriggerType triggerType;
-    }
-
     /**
      * @notice serialize instrument
      * @param _instrument InstrumentExtended struct
@@ -101,9 +75,10 @@ library InstrumentIdUtil {
      */
     function serialize(InstrumentExtended memory _instrument) internal pure returns (Instrument memory) {
         return Instrument(
-            _instrument.period,
+            _instrument.oracleId,
             _instrument.engineId,
             serializeAutocall(_instrument.autocall),
+            _instrument.period,
             serializeCoupons(_instrument.coupons),
             serializeOptions(_instrument.options)
         );
@@ -115,8 +90,11 @@ library InstrumentIdUtil {
      * @return instrumentId id of the instrument
      */
     function getInstrumentId(Instrument memory _instrument) internal pure returns (uint256 instrumentId) {
-        bytes32 start =
-            keccak256(abi.encode(_instrument.period, _instrument.engineId, _instrument.autocallId, _instrument.coupons));
+        bytes32 start = keccak256(
+            abi.encode(
+                _instrument.oracleId, _instrument.engineId, _instrument.autocallId, _instrument.period, _instrument.coupons
+            )
+        );
 
         Option[] memory options = _instrument.options;
         for (uint256 i = 0; i < options.length; i++) {
@@ -255,6 +233,34 @@ library InstrumentIdUtil {
     }
 
     /**
+     * @notice calculate expiry for given instrument parameters.
+     * @param _instrument Instrument struct
+     * @return expiry expiry of the instrument
+     */
+    function getExpiry(Instrument memory _instrument) internal pure returns (uint64 expiry) {
+        expiry = TokenIdUtil.parseExpiry(_instrument.options[0].tokenId);
+    }
+
+    function isBreached(uint256 _barrierBreachThreshold, uint256 _comparisonPrice, uint16 _barrierPCT)
+        internal
+        pure
+        returns (bool)
+    {
+        if (_barrierPCT < UNIT_PERCENTAGE) {
+            return _comparisonPrice < _barrierBreachThreshold;
+        } else {
+            return _comparisonPrice > _barrierBreachThreshold;
+        }
+    }
+
+    function breachTimestamp(uint256[] memory _obsTimestamps) internal pure returns (uint256) {
+        for (uint256 i = 0; i < _obsTimestamps.length; i++) {
+            if (_obsTimestamps[i] > 0) return _obsTimestamps[i];
+        }
+        return 0;
+    }
+
+    /**
      * @notice derive frequency denominated in seconds
      * @param frequency barrier observation frequency type
      * @return frequency denominated in seconds
@@ -342,10 +348,17 @@ library InstrumentIdUtil {
             uint32 optionBarrierId =
                 getBarrierId(option.barrier.barrierPCT, option.barrier.observationFrequency, option.barrier.triggerType);
 
-            options[i] = Option(option.participationPCT, optionBarrierId, option.token);
+            options[i] = Option(option.participationPCT, optionBarrierId, option.tokenId);
             unchecked {
                 ++i;
             }
         }
+    }
+
+    /**
+     * @dev Make sure that the instrument makes sense
+     */
+    function isValidInstrumentToRegister(InstrumentExtended memory _instrument) internal pure {
+        // TODO
     }
 }

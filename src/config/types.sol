@@ -6,18 +6,36 @@ import "./enums.sol";
 /**
  * @dev struct representing an instrument which
  *             is a construction of options and coupons
- * @param period duration of instrument
+ * @param oracleId representing oracle id
  * @param engineId representing engine id
  * @param autocallId representing the autocall feature if included
+ * @param period duration of instrument
  * @param coupons packed uint of all the coupons (64 bits each) in the instrument (4 max)
  * @param options array of all the options in the instrument
  */
 struct Instrument {
-    uint64 period;
+    uint8 oracleId;
     uint8 engineId;
     uint32 autocallId;
+    uint64 period;
     uint256 coupons;
     Option[] options;
+}
+
+struct InstrumentExtended {
+    uint8 oracleId;
+    uint8 engineId;
+    uint64 period;
+    Barrier autocall;
+    Coupon[] coupons;
+    OptionExtended[] options;
+}
+
+struct Coupon {
+    uint16 couponPCT;
+    bool isPartitioned;
+    CouponType couponType;
+    Barrier barrier;
 }
 
 /**
@@ -32,6 +50,31 @@ struct Option {
     uint256 tokenId;
 }
 
+struct OptionExtended {
+    uint16 participationPCT;
+    Barrier barrier;
+    uint256 tokenId;
+}
+
+struct Barrier {
+    uint16 barrierPCT;
+    BarrierObservationFrequencyType observationFrequency;
+    BarrierTriggerType triggerType;
+}
+
+/// @dev internal struct to bypass stack too deep issues
+struct BreachDetail {
+    uint16 barrierPCT;
+    uint256 breachThreshold;
+    BarrierExerciseType exerciseType;
+    uint64 period;
+    uint64 expiry;
+    address oracle;
+    address underlying;
+    address strike;
+    uint256 frequency;
+}
+
 /**
  * @dev struct representing the current balance for a given collateral
  * @param collateralId grappa asset id
@@ -44,17 +87,15 @@ struct Balance {
 
 /**
  * @dev struct representing the balance for a given instrument component
- * @param isCoupon whether it is coupon (true) or option (false)
  * @param index index in coupons or options array
- * @param engineId engine id
- * @param collateralId grappa asset id
+ * @param isCoupon whether it is coupon (true) or option (false)
+ * @param tokenId token id
  * @param amount amount the asset
  */
 struct InstrumentComponentBalance {
-    bool isCoupon;
     uint8 index;
-    uint8 engineId;
-    uint8 collateralId;
+    bool isCoupon;
+    uint256 tokenId;
     uint80 amount;
 }
 

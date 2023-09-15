@@ -162,7 +162,7 @@ contract Grappa is OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeab
      * @param _tokenId product id
      */
     function getDetailFromTokenId(uint256 _tokenId)
-        external
+        public
         pure
         returns (TokenType tokenType, uint40 productId, uint64 expiry, uint64 longStrike, uint64 shortStrike)
     {

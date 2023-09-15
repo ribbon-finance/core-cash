@@ -32,8 +32,8 @@ enum BarrierObservationFrequencyType {
 
 enum BarrierTriggerType {
     AUTOCALL,
-    KNOCK_IN,
-    KNOCK_OUT
+    KNOCK_OUT,
+    KNOCK_IN
 }
 
 enum BarrierExerciseType {

@@ -116,6 +116,18 @@ library TokenIdUtil {
     }
 
     /**
+     * @notice derive option expiry from ERC1155 token id
+     * @param tokenId token id
+     * @return expiry
+     */
+    function parseExpiry(uint256 tokenId) internal pure returns (uint64 expiry) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            expiry := shr(128, tokenId)
+        }
+    }
+
+    /**
      * @notice derive if option is expired from ERC1155 token id
      * @param tokenId token id
      * @return expired bool
