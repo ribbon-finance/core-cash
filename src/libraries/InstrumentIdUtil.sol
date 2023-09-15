@@ -294,11 +294,11 @@ library InstrumentIdUtil {
         }
     }
 
-    function isBreached(uint256[] memory _obsTimestamps) internal pure returns (bool, uint256) {
+    function breachTimestamp(uint256[] memory _obsTimestamps) internal pure returns (uint256) {
         for (uint256 i = 0; i < _obsTimestamps.length; i++) {
-            if (_obsTimestamps[i] > 0) return (true, _obsTimestamps[i]);
+            if (_obsTimestamps[i] > 0) return _obsTimestamps[i];
         }
-        return (false, 0);
+        return 0;
     }
 
     /**

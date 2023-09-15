@@ -413,7 +413,7 @@ contract InstrumentGrappa is Grappa {
         for (uint8 i; i < nObservations; i++) {
             if (observations[i] > settleTime) break;
 
-            if (_getPayoutPerBarrier(barrierId, observations[i] > 0) == 1) {
+            if (_getPayoutPerBarrier(barrierId, observations[i]) == 1) {
                 numPayouts += 1;
                 latestPayout = i;
             }
@@ -461,10 +461,11 @@ contract InstrumentGrappa is Grappa {
         // Apply participation
         payout = payout.mulDivDown(_option.participationPCT, HUNDRED_PCT);
 
-        (bool breached,) = InstrumentIdUtil.isBreached(_getBarrierBreaches(_instrumentId, _option.barrierId));
-
         // Apply barrier
-        payout = payout * _getPayoutPerBarrier(_option.barrierId, breached);
+        payout = payout
+            * _getPayoutPerBarrier(
+                _option.barrierId, InstrumentIdUtil.breachTimestamp(_getBarrierBreaches(_instrumentId, _option.barrierId))
+            );
 
         return payout;
     }
@@ -472,15 +473,16 @@ contract InstrumentGrappa is Grappa {
     /**
      * @dev Return 0 or 1
      * @param _barrierId barrier id
-     * @param _breached breached
+     * @param _breachTimestamp breach timestamp
      */
-    function _getPayoutPerBarrier(uint32 _barrierId, bool _breached) internal pure returns (uint256) {
+    function _getPayoutPerBarrier(uint32 _barrierId, uint256 _breachTimestamp) internal pure returns (uint256) {
         if (_barrierId == 0) return 1;
         (,, BarrierTriggerType triggerType) = getDetailFromBarrierId(_barrierId);
+        bool breached = _breachTimestamp > 0;
 
-        bool knockedOut = _breached && triggerType == BarrierTriggerType.KNOCK_OUT;
+        bool knockedOut = breached && triggerType == BarrierTriggerType.KNOCK_OUT;
         if (knockedOut) return 0;
-        bool notKnockedIn = !_breached && triggerType == BarrierTriggerType.KNOCK_IN;
+        bool notKnockedIn = !breached && triggerType == BarrierTriggerType.KNOCK_IN;
         if (notKnockedIn) return 0;
 
         return 1;
@@ -498,9 +500,9 @@ contract InstrumentGrappa is Grappa {
 
         if (autocallId == 0) return expiry;
 
-        (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(_getBarrierBreaches(_instrumentId, autocallId));
+        uint256 ts = InstrumentIdUtil.breachTimestamp(_getBarrierBreaches(_instrumentId, autocallId));
 
-        return breached ? ts : expiry;
+        return ts > 0 ? ts : expiry;
     }
 
     function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint256[] memory) {
