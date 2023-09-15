@@ -22,6 +22,7 @@ import {InstrumentIdUtil} from "../../src/libraries/InstrumentIdUtil.sol";
 import "../../src/config/errors.sol";
 import "../../src/config/enums.sol";
 import "../../src/config/constants.sol";
+import "../../src/config/types.sol";
 
 /**
  * @notice util contract to setup testing environment
@@ -140,7 +141,7 @@ contract InstrumentGrappaSetup is Setup {
     uint256 internal instrumentId;
     InstrumentGrappa internal instrumentGrappa;
 
-    InstrumentIdUtil.InstrumentExtended internal instrument;
+    InstrumentExtended internal instrument;
     uint32 internal barrierId;
 
     function _setupInstrumentGrappaTestEnvironment() internal {
@@ -156,13 +157,12 @@ contract InstrumentGrappaSetup is Setup {
     function _load() internal returns (uint256 id) {
         instrument.period = 1;
         instrument.engineId = 1;
-        InstrumentIdUtil.Barrier memory barrier =
-            InstrumentIdUtil.Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
+        Barrier memory barrier = Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
         barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
         instrument.autocall = barrier;
-        instrument.coupons.push(InstrumentIdUtil.Coupon(5, false, CouponType(uint8(3)), barrier));
-        instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
+        instrument.coupons.push(Coupon(5, false, CouponType(uint8(3)), barrier));
+        instrument.options.push(OptionExtended(5, barrier, 1));
 
         id = instrumentGrappa.getInstrumentId(instrument);
     }

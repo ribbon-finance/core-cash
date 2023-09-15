@@ -18,7 +18,7 @@ import "../../src/config/errors.sol";
 contract InstrumentGrappaHarness is InstrumentGrappa {
     constructor(address _optionToken, address _instrumentToken) InstrumentGrappa(_optionToken, _instrumentToken) {}
 
-    function exposedGetBarrierBreaches(uint256 _instrumentId, uint32 _barrierId, InstrumentIdUtil.BreachDetail memory _details)
+    function exposedGetBarrierBreaches(uint256 _instrumentId, uint32 _barrierId, BreachDetail memory _details)
         public
         view
         returns (uint256[] memory breaches)
@@ -52,7 +52,7 @@ contract InstrumentGrappaTest is Test {
     // EUROPEAN
 
     function testGetBarrierBreachEuropeanPastBarrier() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -74,7 +74,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachEuropeanNotPastBarrier() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -96,7 +96,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachEuropeanAtBarrier() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -118,7 +118,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachEuropeanWithoutExpiryPriceReverts() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.EUROPEAN,
             period: 400,
@@ -136,7 +136,7 @@ contract InstrumentGrappaTest is Test {
     // CONTINUOUS
 
     function testGetBarrierBreachContinuousNoBreach() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -154,7 +154,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachContinuousBreach() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -177,7 +177,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachContinuousBreachAfterExpiryIgnored() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(110 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -200,7 +200,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachContinuousUnderlyingPriceNotBreachedIgnored() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.CONTINUOUS,
             period: 400,
@@ -225,7 +225,7 @@ contract InstrumentGrappaTest is Test {
     // DISCRETE
 
     function testGetBarrierBreachDiscreteNoBreach() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.DISCRETE,
             period: 400,
@@ -247,7 +247,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachDiscreteMultipleBreaches() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.DISCRETE,
             period: 400,
@@ -287,7 +287,7 @@ contract InstrumentGrappaTest is Test {
     }
 
     function testGetBarrierBreachDiscreteWithoutExpiryPriceReverts() public {
-        InstrumentIdUtil.BreachDetail memory mockDetails = InstrumentIdUtil.BreachDetail({
+        BreachDetail memory mockDetails = BreachDetail({
             barrierPCT: uint16(90 * 10 ** UNIT_PERCENTAGE_DECIMALS),
             exerciseType: BarrierExerciseType.DISCRETE,
             period: 400,

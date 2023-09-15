@@ -70,7 +70,7 @@ contract InstrumentGrappa is Grappa {
      * @param _instrument Instrument to register
      * @return id instrument ID
      */
-    function registerInstrument(InstrumentIdUtil.InstrumentExtended calldata _instrument) external returns (uint256 id) {
+    function registerInstrument(InstrumentExtended calldata _instrument) external returns (uint256 id) {
         InstrumentIdUtil.isValidInstrumentToRegister(_instrument);
 
         Instrument memory sInstrument = InstrumentIdUtil.serialize(_instrument);
@@ -104,11 +104,7 @@ contract InstrumentGrappa is Grappa {
      * @param _instrument Instrument to serialize
      * @return instrument struct
      */
-    function serialize(InstrumentIdUtil.InstrumentExtended calldata _instrument)
-        external
-        pure
-        returns (Instrument memory instrument)
-    {
+    function serialize(InstrumentExtended calldata _instrument) external pure returns (Instrument memory instrument) {
         instrument = InstrumentIdUtil.serialize(_instrument);
     }
 
@@ -204,7 +200,7 @@ contract InstrumentGrappa is Grappa {
      * @param _instrument InstrumentExtended
      * @return id instrument ID
      */
-    function getInstrumentId(InstrumentIdUtil.InstrumentExtended memory _instrument) external pure returns (uint256 id) {
+    function getInstrumentId(InstrumentExtended memory _instrument) external pure returns (uint256 id) {
         id = InstrumentIdUtil.getInstrumentId(_instrument);
     }
 
@@ -506,7 +502,7 @@ contract InstrumentGrappa is Grappa {
     }
 
     function _getBarrierBreaches(uint256 _instrumentId, uint32 _barrierId) internal view returns (uint256[] memory) {
-        InstrumentIdUtil.BreachDetail memory details = _parseBreachDetail(_instrumentId, _barrierId);
+        BreachDetail memory details = _parseBreachDetail(_instrumentId, _barrierId);
 
         uint256 nObs = details.exerciseType == BarrierExerciseType.DISCRETE ? details.period / details.frequency : 1;
         uint256[] memory breaches = new uint256[](nObs);
@@ -531,16 +527,12 @@ contract InstrumentGrappa is Grappa {
         return breaches;
     }
 
-    function _parseBreachDetail(uint256 _instrumentId, uint32 _barrierId)
-        internal
-        view
-        returns (InstrumentIdUtil.BreachDetail memory)
-    {
+    function _parseBreachDetail(uint256 _instrumentId, uint32 _barrierId) internal view returns (BreachDetail memory) {
         (uint16 _barrierPCT, BarrierObservationFrequencyType _observationFrequency,) = getDetailFromBarrierId(_barrierId);
 
         (uint64 _period, uint64 _expiry, address _oracle, address _underlying, address _strike) = _getOracleInfo(_instrumentId);
 
-        return InstrumentIdUtil.BreachDetail({
+        return BreachDetail({
             barrierPCT: _barrierPCT,
             breachThreshold: _getOraclePrice(_oracle, _underlying, _strike, _expiry - _period).mulDivUp(_barrierPCT, UNIT_PERCENTAGE),
             exerciseType: InstrumentIdUtil.getExerciseType(_observationFrequency),

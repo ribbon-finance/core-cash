@@ -47,7 +47,7 @@ contract InstrumentIdLibTest is Test {
     uint256 public constant base = UNIT;
 
     InstrumentIdUtilTester tester;
-    InstrumentIdUtil.InstrumentExtended internal instrument;
+    InstrumentExtended internal instrument;
     uint32 internal barrierId;
     uint64 internal expiry;
     uint256 internal tokenId;
@@ -59,13 +59,12 @@ contract InstrumentIdLibTest is Test {
         instrument.period = 1;
         expiry = 100;
         tokenId = TokenIdUtil.getTokenId(TokenType(1), 1, expiry, 3, 4);
-        InstrumentIdUtil.Barrier memory barrier =
-            InstrumentIdUtil.Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
+        Barrier memory barrier = Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
         barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
         instrument.autocall = barrier;
-        instrument.coupons.push(InstrumentIdUtil.Coupon(5, false, CouponType(uint8(3)), barrier));
-        instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
+        instrument.coupons.push(Coupon(5, false, CouponType(uint8(3)), barrier));
+        instrument.options.push(OptionExtended(5, barrier, 1));
     }
 
     function testSerialize() public {

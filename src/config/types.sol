@@ -22,6 +22,22 @@ struct Instrument {
     Option[] options;
 }
 
+struct InstrumentExtended {
+    uint8 oracleId;
+    uint8 engineId;
+    uint64 period;
+    Barrier autocall;
+    Coupon[] coupons;
+    OptionExtended[] options;
+}
+
+struct Coupon {
+    uint16 couponPCT;
+    bool isPartitioned;
+    CouponType couponType;
+    Barrier barrier;
+}
+
 /**
  * @dev struct representing an option and allocation
  * @param participationPCT participation pct
@@ -32,6 +48,31 @@ struct Option {
     uint16 participationPCT;
     uint32 barrierId;
     uint256 tokenId;
+}
+
+struct OptionExtended {
+    uint16 participationPCT;
+    Barrier barrier;
+    uint256 tokenId;
+}
+
+struct Barrier {
+    uint16 barrierPCT;
+    BarrierObservationFrequencyType observationFrequency;
+    BarrierTriggerType triggerType;
+}
+
+/// @dev internal struct to bypass stack too deep issues
+struct BreachDetail {
+    uint16 barrierPCT;
+    uint256 breachThreshold;
+    BarrierExerciseType exerciseType;
+    uint64 period;
+    uint64 expiry;
+    address oracle;
+    address underlying;
+    address strike;
+    uint256 frequency;
 }
 
 /**
