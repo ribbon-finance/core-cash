@@ -15,13 +15,18 @@ import "../../src/config/types.sol";
  * @dev tester contract to make coverage works
  */
 contract InstrumentIdUtilTester {
-    function getExpiry(Instrument memory _instrument) external pure returns (uint64) {
-        uint64 result = InstrumentIdUtil.getExpiry(_instrument);
+    function getFrequency(BarrierObservationFrequencyType frequency) external pure returns (uint256) {
+        uint256 result = InstrumentIdUtil.getFrequency(frequency);
         return result;
     }
 
-    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) external pure returns (uint256) {
-        uint256 result = InstrumentIdUtil.convertBarrierObservationFrequencyType(frequency);
+    function getExerciseType(BarrierObservationFrequencyType frequency) external pure returns (BarrierExerciseType) {
+        BarrierExerciseType result = InstrumentIdUtil.getExerciseType(frequency);
+        return result;
+    }
+
+    function getExpiry(Instrument memory instrument) external pure returns (uint64) {
+        uint64 result = InstrumentIdUtil.getExpiry(instrument);
         return result;
     }
 
@@ -54,16 +59,13 @@ contract InstrumentIdLibTest is Test {
         instrument.period = 1;
         expiry = 100;
         tokenId = TokenIdUtil.getTokenId(TokenType(1), 1, expiry, 3, 4);
-        InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
-            uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))
-        );
-        barrierId = InstrumentIdUtil.getBarrierId(
-            barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType, barrier.exerciseType
-        );
+        InstrumentIdUtil.Barrier memory barrier =
+            InstrumentIdUtil.Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
+        barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
-        instrument.autocall = InstrumentIdUtil.Autocall(true, barrier);
-        instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
-        instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, tokenId));
+        instrument.autocall = barrier;
+        instrument.coupons.push(InstrumentIdUtil.Coupon(5, false, CouponType(uint8(3)), barrier));
+        instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
     }
 
     function testSerialize() public {
@@ -71,12 +73,12 @@ contract InstrumentIdLibTest is Test {
 
         assertEq(sInstrument.oracleId, 1);
         assertEq(sInstrument.engineId, 1);
-        assertEq(sInstrument.autocallId, InstrumentIdUtil.getAutocallId(true, barrierId));
+        assertEq(sInstrument.autocallId, barrierId);
         assertEq(sInstrument.period, 1);
 
         uint64[] memory coupons = new uint64[](1);
 
-        coupons[0] = InstrumentIdUtil.getCouponId(5, 6, CouponType(uint8(3)), barrierId);
+        coupons[0] = InstrumentIdUtil.getCouponId(5, false, CouponType(uint8(3)), barrierId);
 
         assertEq(sInstrument.coupons, InstrumentIdUtil.getCoupons(coupons));
         assertEq(sInstrument.options[0].participationPCT, 5);
@@ -84,17 +86,25 @@ contract InstrumentIdLibTest is Test {
         assertEq(sInstrument.options[0].tokenId, tokenId);
     }
 
-    function testConvertBarrierObservationFrequencyType() public {
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_DAY), 1 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_WEEK), 7 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.TWO_WEEKS), 14 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_MONTH), 30 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.TWO_MONTHS), 60 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.THREE_MONTHS), 90 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.SIX_MONTHS), 180 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.NINE_MONTHS), 270 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.ONE_YEAR), 365 days);
-        assertEq(tester.convertBarrierObservationFrequencyType(BarrierObservationFrequencyType.NONE), 1);
+    function testGetFrequency() public {
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.ONE_DAY), 1 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.ONE_WEEK), 7 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.TWO_WEEKS), 14 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.ONE_MONTH), 30 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.TWO_MONTHS), 60 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.THREE_MONTHS), 90 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.SIX_MONTHS), 180 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.NINE_MONTHS), 270 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.ONE_YEAR), 365 days);
+        assertEq(tester.getFrequency(BarrierObservationFrequencyType.NONE), 1);
+    }
+
+    function testGetExerciseType() public {
+        assertEq(uint256(tester.getExerciseType(BarrierObservationFrequencyType.NONE)), uint256(BarrierExerciseType.EUROPEAN));
+        assertEq(
+            uint256(tester.getExerciseType(BarrierObservationFrequencyType.ONE_SECOND)), uint256(BarrierExerciseType.CONTINUOUS)
+        );
+        assertEq(uint256(tester.getExerciseType(BarrierObservationFrequencyType.ONE_DAY)), uint256(BarrierExerciseType.DISCRETE));
     }
 
     function testExpiry() public {

@@ -16,7 +16,7 @@ import "./enums.sol";
 struct Instrument {
     uint8 oracleId;
     uint8 engineId;
-    uint40 autocallId;
+    uint32 autocallId;
     uint64 period;
     uint256 coupons;
     Option[] options;

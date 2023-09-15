@@ -119,7 +119,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromInstrumentId(uint256 _instrumentId)
         public
         view
-        returns (uint8 oracleId, uint8 engineId, uint40 autocallId, uint64 period, uint256 coupons, Option[] memory options)
+        returns (uint8 oracleId, uint8 engineId, uint32 autocallId, uint64 period, uint256 coupons, Option[] memory options)
     {
         Instrument memory _instrument = instruments[_instrumentId];
         oracleId = _instrument.oracleId;
@@ -136,21 +136,13 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
-     * @dev parse autocall id into composing autocall details
-     * @param _autocallId autocall id
-     */
-    function getDetailFromAutocallId(uint40 _autocallId) public pure returns (bool isReverse, uint32 barrierId) {
-        return InstrumentIdUtil.parseAutocallId(_autocallId);
-    }
-
-    /**
      * @dev parse coupon id into composing coupon details
      * @param _coupon one coupon
      */
     function getDetailFromCouponId(uint64 _coupon)
         external
         pure
-        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         return InstrumentIdUtil.parseCouponId(_coupon);
     }
@@ -163,7 +155,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromCouponId(uint256 _coupons, uint256 _index)
         public
         pure
-        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         return InstrumentIdUtil.parseCouponId(_coupons, _index);
     }
@@ -175,12 +167,7 @@ contract InstrumentGrappa is Grappa {
     function getDetailFromBarrierId(uint32 _barrierId)
         public
         pure
-        returns (
-            uint16 barrierPCT,
-            BarrierObservationFrequencyType observationFrequency,
-            BarrierTriggerType triggerType,
-            BarrierExerciseType exerciseType
-        )
+        returns (uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType)
     {
         return InstrumentIdUtil.parseBarrierId(_barrierId);
     }
@@ -197,12 +184,8 @@ contract InstrumentGrappa is Grappa {
      * @dev parse barrier observation frequency type
      * @param _observationFrequency observation frequency enum
      */
-    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType _observationFrequency)
-        public
-        pure
-        returns (uint256 frequency)
-    {
-        frequency = InstrumentIdUtil.convertBarrierObservationFrequencyType(_observationFrequency);
+    function getFrequency(BarrierObservationFrequencyType _observationFrequency) public pure returns (uint256 frequency) {
+        frequency = InstrumentIdUtil.getFrequency(_observationFrequency);
     }
 
     /**
@@ -226,27 +209,18 @@ contract InstrumentGrappa is Grappa {
     }
 
     /**
-     * @dev get autocall id from isReverse, barrierId
-     * @param _isReverse is reverse
-     * @param _barrierId barrier id
-     */
-    function getAutocallId(bool _isReverse, uint32 _barrierId) external pure returns (uint256 id) {
-        id = InstrumentIdUtil.getAutocallId(_isReverse, _barrierId);
-    }
-
-    /**
      * @dev get coupon id from coupon pct, num installments, coupon type, barrier id
      * @param _couponPCT coupon percentage of notional
-     * @param _numInstallements number of installments
+     * @param _isPartitioned whether coupons broken up into installments
      * @param _couponType coupon type
      * @param _barrierId barrier id
      */
-    function getCouponId(uint16 _couponPCT, uint16 _numInstallements, CouponType _couponType, uint32 _barrierId)
+    function getCouponId(uint16 _couponPCT, bool _isPartitioned, CouponType _couponType, uint32 _barrierId)
         external
         pure
         returns (uint64 id)
     {
-        id = InstrumentIdUtil.getCouponId(_couponPCT, _numInstallements, _couponType, _barrierId);
+        id = InstrumentIdUtil.getCouponId(_couponPCT, _isPartitioned, _couponType, _barrierId);
     }
 
     /**
@@ -262,15 +236,13 @@ contract InstrumentGrappa is Grappa {
      * @param _barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @param _observationFrequency frequency of barrier observations
      * @param _triggerType trigger type of the barrier
-     * @param _exerciseType exercise type of the barrier
      */
     function getBarrierId(
         uint16 _barrierPCT,
         BarrierObservationFrequencyType _observationFrequency,
-        BarrierTriggerType _triggerType,
-        BarrierExerciseType _exerciseType
+        BarrierTriggerType _triggerType
     ) external pure returns (uint32 id) {
-        id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType, _exerciseType);
+        id = InstrumentIdUtil.getBarrierId(_barrierPCT, _observationFrequency, _triggerType);
     }
 
     /**
@@ -427,27 +399,28 @@ contract InstrumentGrappa is Grappa {
         view
         returns (uint256 payout)
     {
-        (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId) =
-            getDetailFromCouponId(_coupons, _index);
+        (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId) = getDetailFromCouponId(_coupons, _index);
 
         // Early termination if applicable
         uint256 settleTime = _getSettleTime(_instrumentId);
 
-        uint256[] memory breachTimestamps = _getBarrierBreaches(_instrumentId, barrierId);
+        uint256[] memory observations = _getBarrierBreaches(_instrumentId, barrierId);
+        uint256 nObservations = observations.length;
 
         uint256 numPayouts = 0;
         uint256 latestPayout = 0;
 
-        for (uint8 i; i < breachTimestamps.length; i++) {
-            if (breachTimestamps[i] > settleTime) break;
+        for (uint8 i; i < nObservations; i++) {
+            if (observations[i] > settleTime) break;
 
-            if (_getPayoutPerBarrier(barrierId, breachTimestamps[i] > 0) == 1) {
+            if (_getPayoutPerBarrier(barrierId, observations[i] > 0) == 1) {
                 numPayouts += 1;
                 latestPayout = i;
             }
         }
 
         uint256 totalCoupon = (couponPCT * getInitialSpotPrice(_instrumentId) / HUNDRED_PCT);
+        uint256 numInstallements = isPartitioned ? nObservations : 1;
 
         /**
          * NONE:            normal coupon
@@ -464,9 +437,9 @@ contract InstrumentGrappa is Grappa {
         if (couponType == CouponType.NONE) {
             payout = numPayouts * totalCoupon / numInstallements;
         } else if (couponType == CouponType.FIXED || couponType == CouponType.PHOENIX) {
-            payout = (numInstallements - numPayouts) * totalCoupon / numInstallements;
+            payout = (nObservations - numPayouts) * totalCoupon / numInstallements;
         } else {
-            payout = (numInstallements - latestPayout) * totalCoupon / numInstallements;
+            payout = (nObservations - latestPayout) * totalCoupon / numInstallements;
         }
     }
 
@@ -503,7 +476,7 @@ contract InstrumentGrappa is Grappa {
      */
     function _getPayoutPerBarrier(uint32 _barrierId, bool _breached) internal pure returns (uint256) {
         if (_barrierId == 0) return 1;
-        (,, BarrierTriggerType triggerType,) = getDetailFromBarrierId(_barrierId);
+        (,, BarrierTriggerType triggerType) = getDetailFromBarrierId(_barrierId);
 
         bool knockedOut = _breached && triggerType == BarrierTriggerType.KNOCK_OUT;
         if (knockedOut) return 0;
@@ -519,14 +492,13 @@ contract InstrumentGrappa is Grappa {
      * @return settleTime timestamp of settlement
      */
     function _getSettleTime(uint256 _instrumentId) internal view returns (uint256) {
-        (,, uint40 autocallId,,,) = getDetailFromInstrumentId(_instrumentId);
-        (, uint32 barrierId) = getDetailFromAutocallId(autocallId);
+        (,, uint32 autocallId,,,) = getDetailFromInstrumentId(_instrumentId);
 
         uint256 expiry = getExpiry(_instrumentId);
 
-        if (barrierId == 0) return expiry;
+        if (autocallId == 0) return expiry;
 
-        (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(_getBarrierBreaches(_instrumentId, barrierId));
+        (bool breached, uint256 ts) = InstrumentIdUtil.isBreached(_getBarrierBreaches(_instrumentId, autocallId));
 
         return breached ? ts : expiry;
     }
@@ -562,21 +534,20 @@ contract InstrumentGrappa is Grappa {
         view
         returns (InstrumentIdUtil.BreachDetail memory)
     {
-        (uint16 _barrierPCT, BarrierObservationFrequencyType _observationFrequency,, BarrierExerciseType _exerciseType) =
-            getDetailFromBarrierId(_barrierId);
+        (uint16 _barrierPCT, BarrierObservationFrequencyType _observationFrequency,) = getDetailFromBarrierId(_barrierId);
 
         (uint64 _period, uint64 _expiry, address _oracle, address _underlying, address _strike) = _getOracleInfo(_instrumentId);
 
         return InstrumentIdUtil.BreachDetail({
             barrierPCT: _barrierPCT,
             breachThreshold: _getOraclePrice(_oracle, _underlying, _strike, _expiry - _period).mulDivUp(_barrierPCT, UNIT_PERCENTAGE),
-            exerciseType: _exerciseType,
+            exerciseType: InstrumentIdUtil.getExerciseType(_observationFrequency),
             period: _period,
             expiry: _expiry,
             oracle: _oracle,
             underlying: _underlying,
             strike: _strike,
-            frequency: convertBarrierObservationFrequencyType(_observationFrequency)
+            frequency: InstrumentIdUtil.getFrequency(_observationFrequency)
         });
     }
 

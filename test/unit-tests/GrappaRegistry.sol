@@ -253,15 +253,12 @@ contract RegisterInstrumentTest is Test {
     function _load() internal returns (uint256 id) {
         instrument.period = 1;
         instrument.engineId = 1;
-        InstrumentIdUtil.Barrier memory barrier = InstrumentIdUtil.Barrier(
-            uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)), BarrierExerciseType(uint8(2))
-        );
-        barrierId = InstrumentIdUtil.getBarrierId(
-            barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType, barrier.exerciseType
-        );
+        InstrumentIdUtil.Barrier memory barrier =
+            InstrumentIdUtil.Barrier(uint16(1), BarrierObservationFrequencyType(uint8(2)), BarrierTriggerType(uint8(2)));
+        barrierId = InstrumentIdUtil.getBarrierId(barrier.barrierPCT, barrier.observationFrequency, barrier.triggerType);
 
-        instrument.autocall = InstrumentIdUtil.Autocall(true, barrier);
-        instrument.coupons.push(InstrumentIdUtil.Coupon(5, 6, CouponType(uint8(3)), barrier));
+        instrument.autocall = barrier;
+        instrument.coupons.push(InstrumentIdUtil.Coupon(5, false, CouponType(uint8(3)), barrier));
         instrument.options.push(InstrumentIdUtil.OptionExtended(5, barrier, 1));
         // console.log(instrument.options);
         id = grappa.getInstrumentId(instrument);

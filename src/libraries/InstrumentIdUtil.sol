@@ -30,12 +30,11 @@ import "./TokenIdUtil.sol";
  *
  * Autocall ID (40 bits total) =
  *
- *  * ------------------- | ------------------- |
- *  | isReverse (8 bits)  | barrierId (32 bits) *
- *  * ------------------- | ------------------- |
+ *  * -------------------- |
+ *  | barrierId (32 bits)  *
+ *  * -------------------- |
  *
- *  isReverse: whether it is a reverse autocallable
- *  barrierId: id of the barrier
+ *  barrierId: id of the autocallable barrier
  *
  * Coupons (256 bits total) =
  *
@@ -45,26 +44,26 @@ import "./TokenIdUtil.sol";
  *
  * Coupon ID (64 bits total) =
  *
- *  * ------------------- | -------------------------- | -------------------- | -------------------- |
- *  | couponPCT (16 bits) | numInstallements (12 bits) | couponType (4 bits)  | barrierId (32 bits)  *
- *  * ------------------- | -------------------------- | -------------------- | -------------------- |
+ *  * ------------------- | ---------------------- | -------------------- | -------------------- | ------------------- |
+ *  | couponPCT (16 bits) | isPartitioned (1 bits) | couponType (4 bits)  | barrierId (32 bits)  | reserved (11 bits)  *
+ *  * ------------------- | ---------------------- | -------------------- | -------------------- | ------------------- |
  *
  *  couponPCT: coupon percentage of notional
- *  numInstallements: number of coupon installments (ONLY AUTOCALL COUPONS)
+ *  isPartitioned: whether coupons broken up into installments (ONLY AUTOCALL COUPONS)
  *  couponType: coupon type (!NONE ONLY AUTOCALL COUPONS)
  *  barrierId: id of the barrier
+ *  reserved: reserved for future storage
  *
  *
  * Barrier ID (32 bits total) =
  *
- *  * -------------------- | ------------------------------ | --------------------- | --------------------- |
- *  | barrierPCT (16 bits) | observationFrequency (8 bits)  | triggerType (4 bits)  | exerciseType (4 bits) *
- *  * -------------------- | ------------------------------ | --------------------- | --------------------- |
+ *  * -------------------- | ------------------------------ | --------------------- |
+ *  | barrierPCT (16 bits) | observationFrequency (8 bits)  | triggerType (8 bits)  |
+ *  * -------------------- | ------------------------------ | --------------------- |
  *
  *  barrierPCT: percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
  *  observationFrequency: frequency of barrier observations (ObservationFrequencyType)
  *  triggerType: trigger type of the barrier (BarrierTriggerType)
- *  exerciseType: exercise type of the barrier (BarrierExerciseType)
  *
  */
 
@@ -73,19 +72,14 @@ library InstrumentIdUtil {
         uint8 oracleId;
         uint8 engineId;
         uint64 period;
-        Autocall autocall;
+        Barrier autocall;
         Coupon[] coupons;
         OptionExtended[] options;
     }
 
-    struct Autocall {
-        bool isReverse;
-        Barrier barrier;
-    }
-
     struct Coupon {
         uint16 couponPCT;
-        uint16 numInstallements;
+        bool isPartitioned;
         CouponType couponType;
         Barrier barrier;
     }
@@ -100,7 +94,6 @@ library InstrumentIdUtil {
         uint16 barrierPCT;
         BarrierObservationFrequencyType observationFrequency;
         BarrierTriggerType triggerType;
-        BarrierExerciseType exerciseType;
     }
 
     /// @dev internal struct to bypass stack too deep issues
@@ -168,32 +161,6 @@ library InstrumentIdUtil {
     }
 
     /**
-     * @notice calculate autocall id. See table above for autocallId
-     * @param isReverse whether it is a reverse autocallable
-     * @param barrierId id of the barrier
-     * @return autocallId autocall id
-     */
-    function getAutocallId(bool isReverse, uint32 barrierId) internal pure returns (uint40 autocallId) {
-        unchecked {
-            autocallId = (uint40((isReverse ? 1 : 0)) << 32) + uint40(barrierId);
-        }
-    }
-
-    /**
-     * @notice derive isReverse, barrierId from autocallId
-     * @param autocallId autocall id
-     * @return isReverse whether it is a reverse autocallable
-     * @return barrierId id of the barrier
-     */
-    function parseAutocallId(uint40 autocallId) internal pure returns (bool isReverse, uint32 barrierId) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            isReverse := shr(32, autocallId)
-            barrierId := autocallId
-        }
-    }
-
-    /**
      * @notice calculate coupons packing. See table above for coupons
      * @param couponArr array of coupons
      * @return coupons coupons
@@ -207,35 +174,35 @@ library InstrumentIdUtil {
     /**
      * @notice calculate coupon id. See table above for couponId
      * @param couponPCT coupon percentage of notional
-     * @param numInstallements number of installments
+     * @param isPartitioned whether coupon is partitioned
      * @param couponType coupon type
      * @param barrierId barrier id
      * @return couponId coupon id
      */
-    function getCouponId(uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+    function getCouponId(uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
         internal
         pure
         returns (uint64 couponId)
     {
         unchecked {
-            couponId =
-                (uint64(couponPCT) << 48) + (uint64(numInstallements) << 36) + (uint64(couponType) << 32) + uint64(barrierId);
+            couponId = (uint64(couponPCT) << 48) + (uint64(isPartitioned ? 1 : 0) << 47) + (uint64(couponType) << 43)
+                + (uint64(barrierId) << 11);
         }
     }
 
     /**
-     * @notice derive couponPCT, numInstallements, couponType, barrierId from coupon packing
+     * @notice derive couponPCT, isPartitioned, couponType, barrierId from coupon packing
      * @param coupons coupons
      * @param index of the coupon (max 4)
      * @return couponPCT coupon percentage of notional
-     * @return numInstallements number of installments
+     * @return isPartitioned whether coupon is partitioned
      * @return couponType coupon type
      * @return barrierId barrier id
      */
     function parseCouponId(uint256 coupons, uint256 index)
         internal
         pure
-        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         uint64 couponId;
 
@@ -244,28 +211,28 @@ library InstrumentIdUtil {
             couponId := shr(mul(sub(MAX_COUPON_CONSTRUCTION, add(index, 1)), 64), coupons)
         }
 
-        (couponPCT, numInstallements, couponType, barrierId) = parseCouponId(couponId);
+        (couponPCT, isPartitioned, couponType, barrierId) = parseCouponId(couponId);
     }
 
     /**
-     * @notice derive couponPCT, numInstallements, couponType, barrierId from couponId
+     * @notice derive couponPCT, isPartitioned, couponType, barrierId from couponId
      * @param couponId coupon id
      * @return couponPCT coupon percentage of notional
-     * @return numInstallements number of installments
+     * @return isPartitioned whether coupon is partitioned
      * @return couponType coupon type
      * @return barrierId barrier id
      */
     function parseCouponId(uint64 couponId)
         internal
         pure
-        returns (uint16 couponPCT, uint16 numInstallements, CouponType couponType, uint32 barrierId)
+        returns (uint16 couponPCT, bool isPartitioned, CouponType couponType, uint32 barrierId)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             couponPCT := shr(48, couponId)
-            numInstallements := and(shr(36, couponId), 0xFFF)
-            couponType := and(shr(32, couponId), 0xF)
-            barrierId := couponId
+            isPartitioned := and(shr(47, couponId), 0x1)
+            couponType := and(shr(43, couponId), 0xF)
+            barrierId := shr(11, couponId)
         }
     }
 
@@ -274,45 +241,35 @@ library InstrumentIdUtil {
      * @param barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @param observationFrequency frequency of barrier observations
      * @param triggerType trigger type of the barrier
-     * @param exerciseType exercise type of the barrier
      * @return barrierId barrier id
      */
-    function getBarrierId(
-        uint16 barrierPCT,
-        BarrierObservationFrequencyType observationFrequency,
-        BarrierTriggerType triggerType,
-        BarrierExerciseType exerciseType
-    ) internal pure returns (uint32 barrierId) {
+    function getBarrierId(uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType)
+        internal
+        pure
+        returns (uint32 barrierId)
+    {
         unchecked {
-            barrierId = (uint32(barrierPCT) << 16) + (uint32(observationFrequency) << 8) + (uint32(triggerType) << 4)
-                + uint32(exerciseType);
+            barrierId = (uint32(barrierPCT) << 16) + (uint32(observationFrequency) << 8) + uint32(triggerType);
         }
     }
 
     /**
-     * @notice derive barrierPCT, observationFrequency, barrierType, exerciseType from barrierId
+     * @notice derive barrierPCT, observationFrequency, barrierType from barrierId
      * @param barrierId barrier id
      * @return barrierPCT percentage of the barrier relative to initial spot price in {UNIT_PERCENTAGE_DECIMALS} decimals
      * @return observationFrequency frequency of barrier observations
      * @return triggerType trigger type of the barrier
-     * @return exerciseType exercise type of the barrier
      */
     function parseBarrierId(uint32 barrierId)
         internal
         pure
-        returns (
-            uint16 barrierPCT,
-            BarrierObservationFrequencyType observationFrequency,
-            BarrierTriggerType triggerType,
-            BarrierExerciseType exerciseType
-        )
+        returns (uint16 barrierPCT, BarrierObservationFrequencyType observationFrequency, BarrierTriggerType triggerType)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             barrierPCT := shr(16, barrierId)
             observationFrequency := and(shr(8, barrierId), 0xFF)
-            triggerType := and(shr(4, barrierId), 0xF)
-            exerciseType := and(barrierId, 0xF)
+            triggerType := and(barrierId, 0xFF)
         }
     }
 
@@ -349,7 +306,7 @@ library InstrumentIdUtil {
      * @param frequency barrier observation frequency type
      * @return frequency denominated in seconds
      */
-    function convertBarrierObservationFrequencyType(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
+    function getFrequency(BarrierObservationFrequencyType frequency) internal pure returns (uint256) {
         if (frequency == BarrierObservationFrequencyType.ONE_DAY) {
             return (1 days);
         } else if (frequency == BarrierObservationFrequencyType.ONE_WEEK) {
@@ -374,18 +331,27 @@ library InstrumentIdUtil {
     }
 
     /**
+     * @notice Derive barrier exercise type
+     * @param frequency barrier observation frequency type
+     * @return barrier exercise type
+     */
+    function getExerciseType(BarrierObservationFrequencyType frequency) internal pure returns (BarrierExerciseType) {
+        if (frequency == BarrierObservationFrequencyType.NONE) {
+            return BarrierExerciseType.EUROPEAN;
+        } else if (frequency == BarrierObservationFrequencyType.ONE_SECOND) {
+            return BarrierExerciseType.CONTINUOUS;
+        } else {
+            return BarrierExerciseType.DISCRETE;
+        }
+    }
+
+    /**
      * @notice serialize autocall struct
      * @param _autocall Autocall struct
      * @return autocallId
      */
-    function serializeAutocall(Autocall memory _autocall) private pure returns (uint40 autocallId) {
-        uint32 autocallBarrierId = getBarrierId(
-            _autocall.barrier.barrierPCT,
-            _autocall.barrier.observationFrequency,
-            _autocall.barrier.triggerType,
-            _autocall.barrier.exerciseType
-        );
-        autocallId = getAutocallId(_autocall.isReverse, autocallBarrierId);
+    function serializeAutocall(Barrier memory _autocall) private pure returns (uint32 autocallId) {
+        autocallId = getBarrierId(_autocall.barrierPCT, _autocall.observationFrequency, _autocall.triggerType);
     }
 
     /**
@@ -398,14 +364,10 @@ library InstrumentIdUtil {
 
         for (uint8 i; i < _coupons.length;) {
             Coupon memory coupon = _coupons[i];
-            uint32 couponBarrierId = getBarrierId(
-                coupon.barrier.barrierPCT,
-                coupon.barrier.observationFrequency,
-                coupon.barrier.triggerType,
-                coupon.barrier.exerciseType
-            );
+            uint32 couponBarrierId =
+                getBarrierId(coupon.barrier.barrierPCT, coupon.barrier.observationFrequency, coupon.barrier.triggerType);
 
-            couponsArr[i] = getCouponId(coupon.couponPCT, coupon.numInstallements, coupon.couponType, couponBarrierId);
+            couponsArr[i] = getCouponId(coupon.couponPCT, coupon.isPartitioned, coupon.couponType, couponBarrierId);
             unchecked {
                 ++i;
             }
@@ -424,12 +386,8 @@ library InstrumentIdUtil {
 
         for (uint8 i; i < _options.length;) {
             OptionExtended memory option = _options[i];
-            uint32 optionBarrierId = getBarrierId(
-                option.barrier.barrierPCT,
-                option.barrier.observationFrequency,
-                option.barrier.triggerType,
-                option.barrier.exerciseType
-            );
+            uint32 optionBarrierId =
+                getBarrierId(option.barrier.barrierPCT, option.barrier.observationFrequency, option.barrier.triggerType);
 
             options[i] = Option(option.participationPCT, optionBarrierId, option.tokenId);
             unchecked {
